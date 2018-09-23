@@ -34,6 +34,8 @@ typedef enum _tagEMMouseStatus
 	_Mouse_PIC_RectLeftDown,
 	_Mouse_PIC_RectRightDown,
 	_Mouse_PIC_RectMove,
+	_Mouse_PIC_RectPoint,
+	_Mouse_PIC_RectLine,
 }EMMouseStatus;
 
 
@@ -49,6 +51,8 @@ typedef enum _tagEMPointOnRectType
 	_Point_On_Rect_SIZENWSE_SE,		//Double-pointed arrow pointing northwest and southeast
 	_Point_On_Rect_SIZEWE_W,		//Double-pointed arrow pointing west and east
 	_Point_On_Rect_SIZEWE_E,		//Double-pointed arrow pointing west and east
+	_Point_On_Rect_LINE_HAND,		//Double-pointed arrow pointing west and east
+	_Point_On_Rect_POINT_HAND,		//Double-pointed arrow pointing west and east
 
 	_Point_On_Rect_Reserved,
 }EMPointOnRectType;

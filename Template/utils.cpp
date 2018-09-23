@@ -232,6 +232,155 @@ int32_t BufToBmp(FILE *pFile, uint8_t *Buf, int32_t s32Height, int32_t s32Width,
 	return 0;
 }
 
+int32_t LoadBmp(FILE *pFile, StRGB32Bit *pDest)
+{
+	if (pFile == NULL || pDest == NULL)
+	{
+		return -1;
+	}
+
+	fseek(pFile, 0, SEEK_SET);
+
+	BITMAPFILEHEADER stBmpHeader = { 0 };
+
+	BITMAPINFOHEADER stInfoHeader = { 0 };
+
+	size_t u32Read = fread_s(&stBmpHeader, sizeof(BITMAPFILEHEADER), 1, sizeof(BITMAPFILEHEADER), pFile);
+	if (u32Read != sizeof(BITMAPFILEHEADER))
+	{
+		return -1;
+	}
+	u32Read = fread_s(&stInfoHeader, sizeof(BITMAPINFOHEADER), 1, sizeof(BITMAPINFOHEADER), pFile);
+	if (u32Read != sizeof(BITMAPINFOHEADER))
+	{
+		return -1;
+	}
+
+	if (stBmpHeader.bfType != 0x4D42)
+	{
+		return -1;
+	}
+
+	if (stInfoHeader.biBitCount != 24 && stInfoHeader.biBitCount != 32)
+	{
+		return -1;
+	}
+
+	int32_t s32BufOffset = stInfoHeader.biBitCount / 8;
+	int32_t s32Pitch = (s32BufOffset * stInfoHeader.biWidth + 3) & (~0x03);
+	bool boIsYP = false;
+	if (stInfoHeader.biHeight < 0)
+	{
+		stInfoHeader.biHeight = 0 - stInfoHeader.biHeight;
+	}
+	else
+	{
+		boIsYP = true;
+	}
+
+	if (stInfoHeader.biSizeImage == 0)
+	{
+		stInfoHeader.biSizeImage = (((stInfoHeader.biWidth * s32BufOffset + 3) / 4) * 4) *
+			stInfoHeader.biHeight;
+	}
+	uint8_t *pSrc = (uint8_t *)malloc(stInfoHeader.biSizeImage);
+	if (pSrc == NULL)
+	{
+		return -1;
+	}
+	AutoFree csFreeSrcBuf(pSrc);
+
+	if (pDest->s32Height != stInfoHeader.biHeight ||
+		pDest->s32Width != stInfoHeader.biWidth)
+	{
+		if (pDest->pRGB != NULL)
+		{
+			free(pDest->pRGB);
+			pDest->pRGB = NULL;
+		}
+	}
+
+	if (pDest->pRGB == NULL)
+	{
+		pDest->s32Width = stInfoHeader.biWidth;
+		pDest->s32Height = stInfoHeader.biHeight;
+
+		pDest->pRGB = (UINT32 *)malloc(sizeof(UINT32) * 
+			pDest->s32Width *
+			pDest->s32Height);
+	}
+	if (pDest->pRGB == NULL)
+	{
+		return -1;
+	}
+
+	fseek(pFile, stBmpHeader.bfOffBits, SEEK_SET);
+	u32Read = fread_s(pSrc, stInfoHeader.biSizeImage, 1, stInfoHeader.biSizeImage, pFile);
+	if (u32Read != stInfoHeader.biSizeImage)
+	{
+		free(pDest->pRGB);
+		pDest->pRGB = NULL;
+		return -1;
+	}
+
+	if (!boIsYP)
+	{
+		uint8_t *pTmpDest = (uint8_t *)pDest->pRGB;
+		uint8_t *pTmpSrc = pSrc + s32Pitch * (pDest->s32Height - 1);
+		if (s32BufOffset == 4)
+		{
+			for (int32_t i = 0; i < pDest->s32Height; i++)
+			{
+				memcpy(pTmpDest, pTmpSrc, 4 * pDest->s32Width);
+				pTmpDest += (4 * pDest->s32Width);
+				pTmpSrc -= s32Pitch;
+			}
+		}
+		else
+		{
+			for (int32_t i = 0; i < pDest->s32Height; i++)
+			{
+
+				for (int32_t j = 0; j < pDest->s32Width; j++)
+				{
+					memcpy(pTmpDest + j * 4, pTmpSrc + j * s32BufOffset, s32BufOffset);
+				}
+				pTmpDest += (4 * pDest->s32Width);
+				pTmpSrc -= s32Pitch;
+			}
+		}
+	}
+	else
+	{
+		uint8_t *pTmpDest = (uint8_t *)pDest->pRGB;
+		uint8_t *pTmpSrc = pSrc;
+		if (s32BufOffset == 4)
+		{
+			for (int32_t i = 0; i < pDest->s32Height; i++)
+			{
+				memcpy(pTmpDest, pTmpSrc, 4 * pDest->s32Width);
+				pTmpDest += (4 * pDest->s32Width);
+				pTmpSrc += s32Pitch;
+			}
+		}
+		else
+		{
+			for (int32_t i = 0; i < pDest->s32Height; i++)
+			{
+				for (int32_t j = 0; j < pDest->s32Width; j++)
+				{
+					memcpy(pTmpDest + j * 4, pTmpSrc + j * s32BufOffset, s32BufOffset);
+				}
+				pTmpDest += (4 * pDest->s32Width);
+				pTmpSrc += s32Pitch;
+			}
+		}
+	}
+
+	return 0;
+
+}
+
 int32_t RGBCopy(StRGB32Bit *pDest, int32_t s32DestX, int32_t s32DestY,
 	StRGB32Bit *pSrc, int32_t s32SrcX, int32_t s32SrcY,
 	int32_t s32Width, int32_t s32Height)

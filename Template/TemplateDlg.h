@@ -33,4 +33,5 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnBnClickedBtnNew();
+	afx_msg void OnBnClickedBtnLoad();
 };

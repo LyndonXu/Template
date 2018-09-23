@@ -8,6 +8,7 @@
 #include "afxdialogex.h"
 
 #include "DlgComposite.h"
+#include "DlgTemp.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -67,6 +68,7 @@ BEGIN_MESSAGE_MAP(CTemplateDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDC_BTN_New, &CTemplateDlg::OnBnClickedBtnNew)
+	ON_BN_CLICKED(IDC_BTN_Load, &CTemplateDlg::OnBnClickedBtnLoad)
 END_MESSAGE_MAP()
 
 
@@ -164,5 +166,16 @@ void CTemplateDlg::OnBnClickedBtnNew()
 	CDlgComposite csDlg;
 
 	csDlg.m_csScanFloder = L"E:\\workspace\\MobileScreenDiscern\\rgb";
+	csDlg.DoModal();
+}
+
+
+void CTemplateDlg::OnBnClickedBtnLoad()
+{
+	// TODO: 在此添加控件通知处理程序代码
+
+	CDlgTemp csDlg;
+	csDlg.m_csScanFloder = L"E:\\workspace\\MobileScreenDiscern";
+	csDlg.m_csLoadFile = L"Mode.bmp";
 	csDlg.DoModal();
 }

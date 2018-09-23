@@ -434,30 +434,6 @@ INT32 CDlgComposite::ReloadBMP(void)
 		m_u32CompsiteBmpWidthMaxCount = m_u32BmpWidth * MAX_BMP_CNT;
 	}
 
-	UINT32 *pBmpBuf = (UINT32 *)malloc(sizeof(UINT32) * s32Width * s32Height);
-	if (pBmpBuf == NULL)
-	{
-		return -1;
-	}
-	AutoFree csFreeBmpBuf(pBmpBuf);
-
-	UINT32 *pBmpRotateBuf = NULL;
-	AutoFree csFreeBmpRotateBuf;
-	if (m_u32Rotate == _Rotate_0)
-	{
-		pBmpRotateBuf = pBmpBuf;
-	}
-	else
-	{
-		pBmpRotateBuf = (UINT32 *)malloc(sizeof(UINT32) * s32Width * s32Height);
-		if (pBmpRotateBuf == NULL)
-		{
-			return -1;
-		}
-		csFreeBmpRotateBuf.SetMem(pBmpRotateBuf);
-	}
-
-
 	iter = m_IterCur;
 	for (UINT32 i = 0; i < m_u32CompsiteCount; i++, iter++)
 	{
@@ -470,83 +446,14 @@ INT32 CDlgComposite::ReloadBMP(void)
 		{
 			return -1;
 		}
-		BITMAPFILEHEADER stBmpHeader = { 0 };
 
-		BITMAPINFOHEADER stInfoHeader = { 0 };
-
-		size_t u32Read = fread_s(&stBmpHeader, sizeof(BITMAPFILEHEADER), 1, sizeof(BITMAPFILEHEADER), pFile);
-		if (u32Read != sizeof(BITMAPFILEHEADER))
-		{
-			fclose(pFile);
-			return -1;
-		}
-		u32Read = fread_s(&stInfoHeader, sizeof(BITMAPINFOHEADER), 1, sizeof(BITMAPINFOHEADER), pFile);
-		if (u32Read != sizeof(BITMAPINFOHEADER))
-		{
-			fclose(pFile);
-			return -1;
-		}
-
-		INT32 s32BufOffset = stInfoHeader.biBitCount / 8;
-		INT32 s32Pitch = (s32BufOffset * s32Width + 3) & (~0x03);
-
-		UINT8 *pSrc = (UINT8 *)malloc(stInfoHeader.biSizeImage);
-		if (pSrc == NULL)
-		{
-			return -1;
-		}
-		AutoFree csFreeSrcBuf(pSrc);
-
-
-		fseek(pFile, stBmpHeader.bfOffBits, SEEK_SET);
-		u32Read = fread_s(pSrc, stInfoHeader.biSizeImage, 1, stInfoHeader.biSizeImage, pFile);
-		if (u32Read != stInfoHeader.biSizeImage)
-		{
-			fclose(pFile);
-			return -1;
-		}
+		StRGB32Bit stRGB = { 0 };
+		int32_t s32Ret = LoadBmp(pFile, &stRGB);
 		fclose(pFile);
-
-
-#if 1
-		UINT8 *pTmpDest = (UINT8 *)pBmpBuf;
-		UINT8 *pTmpSrc = pSrc + s32Pitch * (s32Height - 1);
-		for (INT32 i = 0; i < s32Height; i++)
+		if (s32Ret != 0)
 		{
-			if (s32BufOffset == 4)
-			{
-				memcpy(pTmpDest, pTmpSrc, 4 * s32Width);
-			}
-			else
-			{
-				for (INT32 j = 0; j < s32Width; j++)
-				{
-					memcpy(pTmpDest + j * 4, pTmpSrc + j * s32BufOffset, s32BufOffset);
-				}
-			}
-			pTmpDest += (4 * s32Width);
-			pTmpSrc -= s32Pitch;
+			return s32Ret;
 		}
-#else
-		UINT8 *pTmpDest = (UINT8 *)pBmpBuf;
-		UINT8 *pTmpSrc = pSrc;
-		for (INT32 i = 0; i < s32Height; i++)
-		{
-			if (s32BufOffset == 4)
-			{
-				memcpy(pTmpDest, pTmpSrc, 4 * s32Width);
-			}
-			else
-			{
-				for (INT32 j = 0; j < s32Width; j++)
-				{
-					memcpy(pTmpDest + j * 4, pTmpSrc + j * s32BufOffset, s32BufOffset);
-				}
-	}
-			pTmpDest += (4 * s32Width);
-			pTmpSrc += s32Pitch;
-		}
-#endif
 #if 0
 		{
 			ret = _wfopen_s(&pFile, L"f:\\test.bmp", L"wb+");
@@ -558,6 +465,25 @@ INT32 CDlgComposite::ReloadBMP(void)
 			}
 		}
 #endif
+		UINT32 *pBmpBuf = stRGB.pRGB;
+		AutoFree csFreeBmpBuf(pBmpBuf);
+
+		UINT32 *pBmpRotateBuf = NULL;
+		AutoFree csFreeBmpRotateBuf;
+		if (m_u32Rotate == _Rotate_0)
+		{
+			pBmpRotateBuf = pBmpBuf;
+		}
+		else
+		{
+			pBmpRotateBuf = (UINT32 *)malloc(sizeof(UINT32) * s32Width * s32Height);
+			if (pBmpRotateBuf == NULL)
+			{
+				return -1;
+			}
+			csFreeBmpRotateBuf.SetMem(pBmpRotateBuf);
+		}
+
 		if (m_u32Rotate == _Rotate_90)
 		{
 			INT32 s32DestWidth = s32Height;
@@ -712,30 +638,31 @@ INT32 CDlgComposite::ReloadBMP(void)
 	if (m_pCompsiteDC != NULL && m_pCompsiteBMPForDC != NULL)
 	{
 		m_pCompsiteDC->CreateCompatibleDC(NULL);
-		
 
-		UINT32 *pBmpFlip =
-			(UINT32 *)malloc(sizeof(UINT32) * MAX_BMP_CNT * s32Width * s32Height);
-		if (pBmpFlip != NULL)
-		{
-			UINT32 *pDest = pBmpFlip;
-			UINT32 *pSrc = m_pBmpBuf32BitMaxCount + 
-				m_u32CompsiteBmpWidthMaxCount * (m_u32CompsiteBmpHeightMaxCount - 1);
-			for (UINT32 i = 0; i < m_u32CompsiteBmpHeightMaxCount; i++)
-			{
-				memcpy(pDest, pSrc, m_u32CompsiteBmpWidth * sizeof(UINT32));
-				pDest += m_u32CompsiteBmpWidthMaxCount;
-				pSrc -= m_u32CompsiteBmpWidthMaxCount;
-			}
-			m_pCompsiteBMPForDC->CreateBitmap(m_u32CompsiteBmpWidthMaxCount,
-				m_u32CompsiteBmpHeightMaxCount, 1, 32,
-				pBmpFlip);
-
-			free(pBmpFlip);
-		}
-
-
+		m_pCompsiteBMPForDC->CreateBitmap(m_u32CompsiteBmpWidthMaxCount,
+			m_u32CompsiteBmpHeightMaxCount, 1, 32,
+			NULL);
 		m_pOldBMP = m_pCompsiteDC->SelectObject(m_pCompsiteBMPForDC);
+
+		BITMAPINFO bmpInfo;
+		ZeroMemory(&bmpInfo, sizeof(BITMAPINFO));
+		bmpInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+		bmpInfo.bmiHeader.biWidth = m_u32CompsiteBmpWidthMaxCount;
+		bmpInfo.bmiHeader.biHeight = m_u32CompsiteBmpHeightMaxCount;
+		bmpInfo.bmiHeader.biPlanes = 1;
+		bmpInfo.bmiHeader.biBitCount = 32;
+		bmpInfo.bmiHeader.biCompression = BI_RGB;
+		bmpInfo.bmiHeader.biSizeImage = 0;
+		bmpInfo.bmiHeader.biXPelsPerMeter = 3000;
+		bmpInfo.bmiHeader.biYPelsPerMeter = 3000;
+		bmpInfo.bmiHeader.biClrUsed = 0;
+		bmpInfo.bmiHeader.biClrImportant = 0;
+
+		::SetDIBits(m_pCompsiteDC->GetSafeHdc(),
+			(HBITMAP)(m_pCompsiteBMPForDC->GetSafeHandle()),
+			0, m_u32CompsiteBmpHeightMaxCount,
+			m_pBmpBuf32BitMaxCount,
+			&bmpInfo, DIB_RGB_COLORS);
 
 #if 0
 		{
@@ -998,6 +925,7 @@ const LPCTSTR c_pCursorType[_Point_On_Rect_Reserved] =
 	IDC_SIZENWSE,
 	IDC_SIZEWE,
 	IDC_SIZEWE,
+	IDC_HAND,
 };
 const EMMouseStatus c_emMouseStatus[_Point_On_Rect_Reserved] =
 {
