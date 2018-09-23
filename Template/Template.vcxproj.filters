@@ -42,6 +42,9 @@
     <ClInclude Include="DlgTemp.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="PolygonCtrl.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Template.cpp">
@@ -62,6 +65,9 @@
     <ClCompile Include="DlgTemp.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="PolygonCtrl.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Template.rc">
@@ -70,6 +76,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="res\Template.rc2">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="res\aero_arrow_add.cur">
       <Filter>资源文件</Filter>
     </None>
   </ItemGroup>
