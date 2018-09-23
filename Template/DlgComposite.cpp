@@ -926,6 +926,7 @@ const LPCTSTR c_pCursorType[_Point_On_Rect_Reserved] =
 	IDC_SIZEWE,
 	IDC_SIZEWE,
 	IDC_HAND,
+	IDC_HAND,
 };
 const EMMouseStatus c_emMouseStatus[_Point_On_Rect_Reserved] =
 {
@@ -939,6 +940,8 @@ const EMMouseStatus c_emMouseStatus[_Point_On_Rect_Reserved] =
 	_Mouse_PIC_RectRightDown,
 	_Mouse_PIC_RectLeft,
 	_Mouse_PIC_RectRight,
+	_Mouse_PIC_RectPoint,
+	_Mouse_PIC_RectLine,
 };
 void CDlgComposite::OnLButtonDown(UINT nFlags, CPoint point)
 {
@@ -1006,8 +1009,6 @@ void CDlgComposite::OnMouseMove(UINT nFlags, CPoint point)
 
 		INT32 x = point.x;
 		INT32 y = point.y;
-
-		float f32Radio = 0.0f;
 
 		switch (m_emMouseStatus)
 		{

@@ -21,6 +21,13 @@ CDlgTemp::CDlgTemp(CWnd* pParent /*=NULL*/)
 	, m_u32BmpWidth(0)
 	, m_u32BmpHeight(0)
 	, m_pBmpBuf32Bit(0)
+	, m_emMouseStatus(_Mouse_UP)
+	, m_s32OperatoinIndex(0)
+
+
+	, m_pBMPDC(NULL)
+	, m_pBMPForBMPDC(NULL)
+	, m_pOldBMP(NULL)
 
 {
 
@@ -340,7 +347,7 @@ INT32 CDlgTemp::ReDrawStaticPic(void)
 			csDest.right = csDest.right - x / 2;
 		}
 
-		//m_csDrawRectInPIC = csDest;
+		m_csDrawRectInPIC = csDest;
 
 		TransparentBlt(csMemDC.GetSafeHdc(),
 			csDest.left, csDest.top, csDest.Width(), csDest.Height(),
@@ -353,6 +360,11 @@ INT32 CDlgTemp::ReDrawStaticPic(void)
 		{
 			if (m_csPolygonCtrl.m_csPoints.size() != 0)
 			{
+				if (m_emMouseStatus == _Mouse_UP)
+				{
+					m_csPolygonCtrl.ReloadRelativePoint(m_csDrawRectInPIC);
+				}
+
 				POINT *pPoint = (POINT *)malloc(sizeof(POINT) *m_csPolygonCtrl.m_csPoints.size());
 				if (pPoint == NULL)
 				{
@@ -442,55 +454,33 @@ int32_t GetLine(double x1, double y1, double x2, double y2, StLine *pLine)
 	return 0;
 }
 
-bool PointInPolygon(CListPoint *pPoints, INT32 x, INT32 y)
+bool PtInPolygon(POINT p, LPPOINT ptPolygon, INT32 nCount) 
 {
-	if (pPoints->size() < 3)
+	INT32 nCross = 0; 
+	for (INT32 i = 0; i < nCount; i++)
 	{
-		return  false;
-	}
-	uint32_t   i, j = pPoints->size() - 1;
-	bool  oddNodes = false;
-
-	POINT *pPoint = (POINT *)malloc(sizeof(POINT) *  pPoints->size());
-	if (pPoint == NULL)
-	{
-		return false;
-	}
-	AutoFree csFreePoint(pPoint);
-	CListPointIter iter = pPoints->begin();
-	i = 0;
-	for (; iter != pPoints->end(); iter++, i++)
-	{
-		pPoint[i].x = iter->x;
-		pPoint[i].y = iter->y;
-	}
-
-	for (i = 0; i < pPoints->size(); i++)
-	{
-		if (pPoint[i].y < y && pPoint[j].y >= y
-			|| pPoint[j].y < y && pPoint[i].y >= y)
-		{
-			if (pPoint[i].x + (y - pPoint[i].y) / 
-				(pPoint[j].y - pPoint[i].y) * (pPoint[j].x - pPoint[i].x) < x)
-			{
-				oddNodes = !oddNodes;
-			}
-		}
-		j = i;
-	}
-
-	return oddNodes;
-}
+		POINT p1 = ptPolygon[i]; 
+		POINT p2 = ptPolygon[(i + 1) % nCount]; // 求解 y=p.y 与 p1p2 的交点 
+		if ( p1.y == p2.y ) // p1p2 与 y=p0.y平行 
+			continue; 
+		if ( p.y < min(p1.y, p2.y) ) // 交点在p1p2延长线上 
+			continue; 
+		if ( p.y >= max(p1.y, p2.y) ) // 交点在p1p2延长线上 
+			continue; // 求交点的 X 坐标
+		double x = (double)(p.y - p1.y) * (double)(p2.x - p1.x) / (double)(p2.y - p1.y) + p1.x; 
+		if ( x > p.x ) 
+			nCross++; // 只统计单边交点 
+	} // 单边交点为偶数，点在多边形之外 --- 
+		
+	return (nCross % 2 == 1); 
+} 
 
 bool PointInPolygon(CListPointEx *pPoints, INT32 x, INT32 y)
 {
 	if (pPoints->size() < 3)
 	{
-		return  false;
+		return false;
 	}
-	uint32_t   i, j = pPoints->size() - 1;
-	bool  oddNodes = false;
-
 	POINT *pPoint = (POINT *)malloc(sizeof(POINT) *  pPoints->size());
 	if (pPoint == NULL)
 	{
@@ -498,30 +488,16 @@ bool PointInPolygon(CListPointEx *pPoints, INT32 x, INT32 y)
 	}
 	AutoFree csFreePoint(pPoint);
 	CListPointExIter iter = pPoints->begin();
-	i = 0;
+	INT32 i = 0;
 	for (; iter != pPoints->end(); iter++, i++)
 	{
 		pPoint[i].x = iter->m_stPoint.x;
 		pPoint[i].y = iter->m_stPoint.y;
 	}
 
-	for (i = 0; i < pPoints->size(); i++)
-	{
-		if (pPoint[i].y < y && pPoint[j].y >= y
-			|| pPoint[j].y < y && pPoint[i].y >= y)
-		{
-			if (pPoint[i].x + (y - pPoint[i].y) /
-				(pPoint[j].y - pPoint[i].y) * (pPoint[j].x - pPoint[i].x) < x)
-			{
-				oddNodes = !oddNodes;
-			}
-		}
-		j = i;
-	}
-
-	return oddNodes;
+	POINT p = { x, y };
+	return PtInPolygon(p, pPoint, i);
 }
-
 
 EMPointOnRectType  CPolygonCtrl:: GetPointStatus(INT32 x, INT32 y, INT32 *pV/* = NULL*/)
 {
@@ -593,7 +569,7 @@ INT32 CPolygonCtrl::InsertPoint(INT32 x, INT32 y, INT32 s32Index/* = ~0*/)
 {
 	if (s32Index >= 0)
 	{
-		if (m_csPoints.size() > 2 && (UINT32)s32Index < m_csPoints.size() - 1)
+		if (m_csPoints.size() > 2 && (UINT32)s32Index <= m_csPoints.size() - 1)
 		{
 			CListPointExIter iter;
 			for (iter = m_csPoints.begin(); iter != m_csPoints.end(); iter++)
@@ -610,9 +586,9 @@ INT32 CPolygonCtrl::InsertPoint(INT32 x, INT32 y, INT32 s32Index/* = ~0*/)
 				{
 					m_csPoints.insert(iter, StPointEx{ iter->m_s32Index, 0, 0,{ x, y } });
 				}
-				else
+				else		/* insert to end */
 				{
-					return -1;
+					m_csPoints.push_back(StPointEx{(INT32)m_csPoints.size(), 0, 0,{ x, y } });
 				}
 			}
 			else
@@ -635,7 +611,10 @@ INT32 CPolygonCtrl::InsertPoint(INT32 x, INT32 y, INT32 s32Index/* = ~0*/)
 
 			CListPointExIter iterNext = iterCur;
 			iterNext++;
-
+			if (iterNext == m_csPoints.end())
+			{
+				iterNext = m_csPoints.begin();
+			}
 
 			StLine stLine = { 0.0 };
 
@@ -761,13 +740,237 @@ INT32 CPolygonCtrl::InsertPoint(INT32 x, INT32 y, INT32 s32Index/* = ~0*/)
 }
 INT32 CPolygonCtrl::DeletePoint(INT32 x, INT32 y, INT32 s32Index/* = ~0*/)
 {
+	if (m_csPoints.size() == 0)
+	{
+		return -1;
+	}
+	if (s32Index < 0)
+	{
+		return -1;
+	}
+
+	CListPointExIter iter;
+	for (iter = m_csPoints.begin(); iter != m_csPoints.end(); iter++)
+	{
+		if (iter->m_s32Index == s32Index)
+		{
+			break;
+		}
+	}
+	if (iter == m_csPoints.end())
+	{
+		return -1;
+	}
+
+	CListPointExIter iterCur = iter, iterPrev, iterNext;
+	if (iter == m_csPoints.begin())
+	{
+		iterPrev = m_csPoints.end();
+	}
+	else
+	{
+		iterPrev = iter;
+	}
+	iterPrev--;
+
+	iterNext = iter;
+	iterNext++;
+	if (iterNext == m_csPoints.end())
+	{
+		iterNext = m_csPoints.begin();
+	}
+	StLine stLine = { 0 };
+	GetLine(iterPrev->m_stPoint.x, iterPrev->m_stPoint.y,
+		iterNext->m_stPoint.x, iterNext->m_stPoint.y, &stLine);
+
+	iterPrev->m_s32LineFlag = LINE_VALID;
+	iterPrev->m_stLine = stLine;
+
+	m_csPoints.erase(iterCur);
+
+	s32Index = 0;
+	for (iter = m_csPoints.begin(); iter != m_csPoints.end(); iter++, s32Index++)
+	{
+		if (iter->m_s32Index = s32Index)
+		{
+			break;
+		}
+	}
+
 	return 0;
 
 }
 INT32 CPolygonCtrl::MovePolygon(INT32 xOffset, INT32 yOffset)
 {
+	if (m_csPoints.size() == 0)
+	{
+		return -1;
+	}
+	CListPointExIter iter;
+	for (iter = m_csPoints.begin(); iter != m_csPoints.end(); iter++)
+	{
+		iter->m_stPoint.x += xOffset;
+		iter->m_stPoint.y += yOffset;
+	}
+
+	CListPointExIter iterTmp = m_csPoints.end();
+	iterTmp--;
+	for (iter = m_csPoints.begin(); iter != iterTmp; iter++)
+	{
+		CListPointExIter iterNext = iter;
+		iterNext++;
+
+		StLine stLine = { 0.0 };
+
+		GetLine(iter->m_stPoint.x, iter->m_stPoint.y,
+			iterNext->m_stPoint.x, iterNext->m_stPoint.y, &stLine);
+		iter->m_stLine = stLine;
+	}
+
+	{
+		CListPointExIter iterNext = m_csPoints.begin();
+		StLine stLine = { 0.0 };
+
+		GetLine(iter->m_stPoint.x, iter->m_stPoint.y,
+			iterNext->m_stPoint.x, iterNext->m_stPoint.y, &stLine);
+		iter->m_stLine = stLine;
+	}
+
 	return 0;
 }
+
+INT32 CPolygonCtrl::MovePoint(INT32 xOffset, INT32 yOffset, INT32 s32Index/* = ~0*/)
+{
+	if (m_csPoints.size() == 0)
+	{
+		return -1;
+	}
+	if (s32Index < 0)
+	{
+		return -1;
+	}
+
+	CListPointExIter iter;
+	for (iter = m_csPoints.begin(); iter != m_csPoints.end(); iter++)
+	{
+		if (iter->m_s32Index == s32Index)
+		{
+			break;
+		}
+	}
+	if (iter == m_csPoints.end())
+	{
+		return -1;
+	}
+
+	iter->m_stPoint.x += xOffset;
+	iter->m_stPoint.y += yOffset;
+
+	CListPointExIter iterCur = iter, iterPrev, iterNext;
+	if (iter == m_csPoints.begin())
+	{
+		iterPrev = m_csPoints.end();
+	}
+	else
+	{
+		iterPrev = iter;
+	}
+	iterPrev--;
+
+	iterNext = iter;
+	iterNext++;
+	if (iterNext == m_csPoints.end())
+	{
+		iterNext = m_csPoints.begin();
+	}
+	StLine stLine = { 0 };
+	GetLine(iterPrev->m_stPoint.x, iterPrev->m_stPoint.y,
+		iterCur->m_stPoint.x, iterCur->m_stPoint.y, &stLine);
+
+	iterPrev->m_s32LineFlag = LINE_VALID;
+	iterPrev->m_stLine = stLine;
+
+
+	GetLine(iterCur->m_stPoint.x, iterCur->m_stPoint.y,
+		iterNext->m_stPoint.x, iterNext->m_stPoint.y, &stLine);
+
+	iterCur->m_s32LineFlag = LINE_VALID;
+	iterCur->m_stLine = stLine;
+
+	return 0;
+
+}
+
+INT32 CPolygonCtrl::ReBuildUnionPoint(RECT *pRect)
+{
+	if (pRect == NULL)
+	{
+		return -1;
+	}
+
+	INT32 s32Width = pRect->right - pRect->left;
+	INT32 s32Height = pRect->bottom - pRect->top;
+
+	if (s32Width < 0)
+	{
+		s32Width = 0 - s32Width;
+	}
+
+	if (s32Height < 0)
+	{
+		s32Height = 0 - s32Height;
+	}
+
+	m_stOrgRect = *pRect;
+
+	CListPointExIter iter;
+	for (iter = m_csPoints.begin(); iter != m_csPoints.end(); iter++)
+	{
+		iter->m_stPoint.X = (double)(iter->m_stPoint.x - pRect->left) / s32Width;
+		iter->m_stPoint.Y = (double)(iter->m_stPoint.y - pRect->top) / s32Height;
+	}
+
+
+	return 0;
+}
+INT32 CPolygonCtrl::ReloadRelativePoint(RECT *pRect)
+{
+	if (pRect == NULL)
+	{
+		return -1;
+	}
+
+	if (memcmp(pRect, &m_stOrgRect, sizeof(RECT)) == 0)
+	{
+		return 0;
+	}
+
+	INT32 s32Width = pRect->right - pRect->left;
+	INT32 s32Height = pRect->bottom - pRect->top;
+
+	if (s32Width < 0)
+	{
+		s32Width = 0 - s32Width;
+	}
+
+	if (s32Height < 0)
+	{
+		s32Height = 0 - s32Height;
+	}
+
+	m_stOrgRect = *pRect;
+
+	CListPointExIter iter;
+	for (iter = m_csPoints.begin(); iter != m_csPoints.end(); iter++)
+	{
+		iter->m_stPoint.x = (INT32)(iter->m_stPoint.X * s32Width + pRect->left);
+		iter->m_stPoint.y = (INT32)(iter->m_stPoint.Y * s32Height + pRect->top);
+	}
+
+	return 0;
+}
+
+
 
 
 void CDlgTemp::OnLButtonDown(UINT nFlags, CPoint point)
@@ -776,8 +979,41 @@ void CDlgTemp::OnLButtonDown(UINT nFlags, CPoint point)
 
 	//TRACE(L"POINT is %sin\n", PointInPolygon(&m_csPoint, point.x, point.y) ? L"" : L"not");
 
-	m_csPolygonCtrl.InsertPoint(point.x, point.y);
+	//m_csPolygonCtrl.InsertPoint(point.x, point.y);
+
+	CRect csPicRect, csRectWindows;
+	m_csStaticPIC.GetWindowRect(csPicRect);
+
+	csRectWindows = m_csDrawRectInPIC;
+	csRectWindows.MoveToXY(csPicRect.left + m_csDrawRectInPIC.left,
+		csPicRect.top + m_csDrawRectInPIC.top);
+
+	if (PtInRect(&m_csDrawRectInPIC, point))
+	{
+		m_csPrevDownMovePoint = m_csPrevDownPoint = point;
+
+		EMPointOnRectType emType = _Point_On_Rect_NotIn;
 		
+		emType = m_csPolygonCtrl.GetPointStatus(point.x, point.y, &m_s32OperatoinIndex);
+
+		if (emType == _Point_On_Rect_NotIn)
+		{
+			m_csPolygonCtrl.InsertPoint(point.x, point.y);
+		}
+		else if (emType == _Point_On_Rect_LINE_HAND)
+		{
+			m_csPolygonCtrl.InsertPoint(point.x, point.y, m_s32OperatoinIndex);
+		}
+		else if (emType == _Point_On_Rect_POINT_HAND)
+		{
+			m_s32OperatoinIndex = m_s32OperatoinIndex;
+		}
+
+		m_emMouseStatus = c_emMouseStatus[emType];
+
+		ClipCursor(&csRectWindows);
+	}
+
 	CDialogEx::OnLButtonDown(nFlags, point);
 }
 
@@ -785,6 +1021,14 @@ void CDlgTemp::OnLButtonDown(UINT nFlags, CPoint point)
 void CDlgTemp::OnLButtonUp(UINT nFlags, CPoint point)
 {
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
+	
+	if (m_emMouseStatus != _Mouse_UP)
+	{
+		m_csPolygonCtrl.ReBuildUnionPoint(m_csDrawRectInPIC);
+	}
+	m_emMouseStatus = _Mouse_UP;
+
+	ClipCursor(NULL);
 
 	CDialogEx::OnLButtonUp(nFlags, point);
 }
@@ -794,6 +1038,86 @@ void CDlgTemp::OnMouseMove(UINT nFlags, CPoint point)
 {
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
 
+	if (m_emMouseStatus != _Mouse_UP)
+	{
+		INT32 x = point.x;
+		INT32 y = point.y;
+		switch (m_emMouseStatus)
+		{
+		case _Mouse_PIC_New:
+		{
+			break;
+		}
+		case _Mouse_PIC_RectLeft:
+		{
+			break;
+		}
+		case _Mouse_PIC_RectRight:
+		{
+			break;
+		}
+		case _Mouse_PIC_RectUp:
+		{
+			break;
+		}
+		case _Mouse_PIC_RectDown:
+		{
+			break;
+		}
+		case _Mouse_PIC_RectLeftUp:
+		{
+			break;
+		}
+		case _Mouse_PIC_RectRightUp:
+		{
+			break;
+		}
+		case _Mouse_PIC_RectLeftDown:
+		{
+			break;
+		}
+		case _Mouse_PIC_RectRightDown:
+		{
+			break;
+		}
+		case _Mouse_PIC_RectMove:
+		{
+			m_csPolygonCtrl.MovePolygon(
+				x - m_csPrevDownMovePoint.x,
+				y - m_csPrevDownMovePoint.y);
+			m_csPrevDownMovePoint = point;
+			break;
+		}
+		case _Mouse_PIC_RectPoint:
+		{
+			m_csPolygonCtrl.MovePoint(
+				x - m_csPrevDownMovePoint.x,
+				y - m_csPrevDownMovePoint.y, m_s32OperatoinIndex);
+			m_csPrevDownMovePoint = point;
+			break;
+		}
+
+		default:
+			break;
+		}
+
+	}
+	else
+	{
+		EMPointOnRectType emType = _Point_On_Rect_NotIn;
+		emType = m_csPolygonCtrl.GetPointStatus(point.x, point.y);
+
+		SetCursor(LoadCursor(NULL, c_pCursorType[emType]));
+		if (emType != _Point_On_Rect_NotIn)
+		{
+			SetCapture();
+		}
+		else
+		{
+			ReleaseCapture();
+		}
+
+	}
 	CDialogEx::OnMouseMove(nFlags, point);
 }
 
@@ -801,6 +1125,24 @@ void CDlgTemp::OnMouseMove(UINT nFlags, CPoint point)
 void CDlgTemp::OnRButtonUp(UINT nFlags, CPoint point)
 {
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
+	if (PtInRect(&m_csDrawRectInPIC, point))
+	{
+		EMPointOnRectType emType = _Point_On_Rect_NotIn;
+
+		emType = m_csPolygonCtrl.GetPointStatus(point.x, point.y, &m_s32OperatoinIndex);
+
+		if (emType == _Point_On_Rect_NotIn)
+		{
+		}
+		else if (emType == _Point_On_Rect_LINE_HAND)
+		{
+
+		}
+		else if (emType == _Point_On_Rect_POINT_HAND)
+		{
+			m_csPolygonCtrl.DeletePoint(point.x, point.y, m_s32OperatoinIndex);
+		}
+	}
 
 	CDialogEx::OnRButtonUp(nFlags, point);
 }

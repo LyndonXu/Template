@@ -52,11 +52,15 @@ public:
 	}
 
 	CListPointEx m_csPoints;
+	RECT m_stOrgRect;
 
 	EMPointOnRectType GetPointStatus(INT32 x, INT32 y, INT32 *pV = NULL);
 	INT32 InsertPoint(INT32 x, INT32 y, INT32 s32Index = ~0);
 	INT32 DeletePoint(INT32 x, INT32 y, INT32 s32Index = ~0);
 	INT32 MovePolygon(INT32 xOffset, INT32 yOffset);
+	INT32 MovePoint(INT32 xOffset, INT32 yOffset, INT32 s32Index = ~0);
+	INT32 ReBuildUnionPoint(RECT *pRect);
+	INT32 ReloadRelativePoint(RECT *pRect);
 	bool IsPolygonValid(void)
 	{
 		return m_csPoints.size() > 2;
@@ -116,13 +120,23 @@ public:
 	UINT32	m_u32BmpHeight;
 	UINT32	*m_pBmpBuf32Bit;
 
+	EMMouseStatus m_emMouseStatus;
+	INT32	m_s32OperatoinIndex;
+
+
+public:
 	CStatic m_csStaticPIC;
 	CDC		*m_pBMPDC;
 	CBitmap *m_pBMPForBMPDC;
 	CBitmap *m_pOldBMP;
+	CRect m_csDrawRectInPIC;
+	CPoint m_csPrevDownPoint;
+	CPoint m_csPrevDownMovePoint;
 
 
 	CPolygonCtrl m_csPolygonCtrl;
+
+
 
 public:
 	INT32 ReloadBMP(void);
