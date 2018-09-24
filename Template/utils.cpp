@@ -383,7 +383,7 @@ int32_t LoadBmp(FILE *pFile, StRGB32Bit *pDest)
 
 int32_t RGBCopy(StRGB32Bit *pDest, int32_t s32DestX, int32_t s32DestY,
 	StRGB32Bit *pSrc, int32_t s32SrcX, int32_t s32SrcY,
-	int32_t s32Width, int32_t s32Height)
+	int32_t s32Width, int32_t s32Height, bool boYFlip/* = false*/)
 {
 	if (pDest == NULL)
 	{
@@ -420,14 +420,30 @@ int32_t RGBCopy(StRGB32Bit *pDest, int32_t s32DestX, int32_t s32DestY,
 		s32Width = pDest->s32Width - s32DestX;
 	}
 
-	uint32_t *pDestTmp = pDest->pRGB + s32DestY * pDest->s32Width + s32DestX;
-	uint32_t *pSrcTmp = pSrc->pRGB + s32SrcY * pSrc->s32Width + s32SrcX;
-
-	for (int32_t j = 0; j < s32Height; j++)
+	if (boYFlip)
 	{
-		memcpy(pDestTmp, pSrcTmp, s32Width * 4);
-		pDestTmp += pDest->s32Width;
-		pSrcTmp += pSrc->s32Width;
+		uint32_t *pDestTmp = pDest->pRGB + s32DestY * pDest->s32Width + s32DestX;
+		uint32_t *pSrcTmp = pSrc->pRGB + (s32SrcY + s32Height - 1) * pSrc->s32Width + s32SrcX;
+
+		for (int32_t j = 0; j < s32Height; j++)
+		{
+			memcpy(pDestTmp, pSrcTmp, s32Width * 4);
+			pDestTmp += pDest->s32Width;
+			pSrcTmp -= pSrc->s32Width;
+		}
+	}
+	else
+	{
+		uint32_t *pDestTmp = pDest->pRGB + s32DestY * pDest->s32Width + s32DestX;
+		uint32_t *pSrcTmp = pSrc->pRGB + s32SrcY * pSrc->s32Width + s32SrcX;
+
+		for (int32_t j = 0; j < s32Height; j++)
+		{
+			memcpy(pDestTmp, pSrcTmp, s32Width * 4);
+			pDestTmp += pDest->s32Width;
+			pSrcTmp += pSrc->s32Width;
+		}
+
 	}
 
 	return 0;

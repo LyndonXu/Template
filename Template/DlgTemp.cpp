@@ -9,6 +9,9 @@
 #include "utils.h"
 #include "DlgComposite.h"
 
+
+#define RELOAD_BMP_MSG	(WM_USER + 200)
+
 // CDlgTemp 对话框
 
 IMPLEMENT_DYNAMIC(CDlgTemp, CDialogEx)
@@ -24,11 +27,15 @@ CDlgTemp::CDlgTemp(CWnd* pParent /*=NULL*/)
 	, m_emMouseStatus(_Mouse_UP)
 	, m_s32OperatoinIndex(0)
 
+	, m_s32SetUpMode(0)
+
 	, m_pBMPDC(NULL)
 	, m_pBMPForBMPDC(NULL)
 	, m_pOldBMP(NULL)
 
 	, m_pPolygonCtrl(NULL)
+
+	, m_pCreateWnd(NULL)
 
 {
 
@@ -36,6 +43,10 @@ CDlgTemp::CDlgTemp(CWnd* pParent /*=NULL*/)
 
 CDlgTemp::~CDlgTemp()
 {
+	if (m_s32SetUpMode != 0)
+	{
+		DestroyWindow();
+	}
 
 	if (m_pBmpBuf32Bit != NULL)
 	{
@@ -74,6 +85,9 @@ BEGIN_MESSAGE_MAP(CDlgTemp, CDialogEx)
 	ON_WM_LBUTTONUP()
 	ON_WM_MOUSEMOVE()
 	ON_WM_RBUTTONUP()
+	ON_MESSAGE(RELOAD_BMP_MSG, &ReloadBmpMessageCtrl)
+
+	ON_BN_CLICKED(IDC_BTN_Save, &CDlgTemp::OnBnClickedBtnSave)
 END_MESSAGE_MAP()
 
 
@@ -86,9 +100,35 @@ BOOL CDlgTemp::OnInitDialog()
 
 	// TODO:  在此添加额外的初始化
 
+	INT32 s32Width = GetSystemMetrics(SM_CXSCREEN);
+	//int s32Height = GetSystemMetrics(SM_CYSCREEN);
+	INT32 s32Left = (s32Width - 480) / 2;
+	INT32 s32Top = 50;
+	CRect csClient(s32Left, s32Top, s32Left + 480, s32Top + 320);
+
+	::SetWindowPos(GetSafeHwnd(), NULL,//HWND_TOPMOST, 
+		csClient.left, csClient.top,
+		csClient.Width(), csClient.Height(),
+		SWP_SHOWWINDOW);
+
 	ReBuildCtrls();
 
-	ReloadBMP();
+	if (m_s32SetUpMode == 0)
+	{
+		ReloadBMP();
+	}
+	else
+	{
+		CMenu* pSysMenu = GetSystemMenu(FALSE);
+		if (pSysMenu != NULL)
+		{
+			pSysMenu->EnableMenuItem(SC_CLOSE, MF_DISABLED);
+		}
+
+		GetDlgItem(IDOK)->ShowWindow(SW_HIDE);
+		GetDlgItem(IDCANCEL)->ShowWindow(SW_HIDE);
+
+	}
 
 	SetTimer(1, 40, NULL);
 
@@ -190,6 +230,25 @@ void CDlgTemp::ReBuildCtrls(void)
 #undef ID_COUNT
 	}
 
+	{
+		CRect csClient;
+		GetWindowRect(&csClient);
+		CWnd *pCtrl = GetDlgItem(IDC_BTN_Save);
+
+		if (pCtrl != NULL && pCtrl->GetSafeHwnd() != NULL)
+		{
+			CRect csRect;
+			pCtrl->GetWindowRect(csRect);
+
+			csRect.MoveToXY(csClient.left + 20, csClient.bottom - 35);
+
+			ScreenToClient(&csRect);
+
+			pCtrl->MoveWindow(csRect);
+
+		}
+	}
+
 }
 
 INT32 CDlgTemp::ReloadBMP(void)
@@ -229,6 +288,45 @@ INT32 CDlgTemp::ReloadBMP(void)
 	m_pBmpBuf32Bit = stRGB.pRGB;
 	return ReBuildBMPDC();
 }
+
+INT32 CDlgTemp::ReloadBMP(StRGB32Bit *pRGB)
+{
+	if (m_s32SetUpMode != 1)
+	{
+		return -1;
+	}
+	if (pRGB == NULL)
+	{
+		return -1;
+	}
+
+	if (pRGB->s32Height <= 0 || pRGB->s32Width <= 0 || pRGB->pRGB == NULL)
+	{
+		return -1;
+	}
+	char *pTmp = (char *)malloc(pRGB->s32Width * pRGB->s32Height * 4 + 32 + sizeof(StRGB32Bit) + 32);
+	if (pTmp == NULL)
+	{
+		return  -1;
+	}
+	StRGB32Bit *pRGBNNew = (StRGB32Bit *)(pTmp + pRGB->s32Width * pRGB->s32Height * 4);
+	*pRGBNNew = *pRGB;
+	pRGBNNew->pRGB = (uint32_t *)(pTmp);
+
+	memcpy(pRGBNNew->pRGB, pRGB->pRGB, pRGB->s32Width * pRGB->s32Height * 4);
+
+	if (PostMessage(RELOAD_BMP_MSG, 0, (LPARAM)pRGBNNew))
+	{
+		return 0;
+	}
+	else
+	{
+		free(pTmp);
+		return -1;
+	}
+
+}
+
 
 
 INT32 CDlgTemp::ReBuildBMPDC(void)
@@ -649,3 +747,55 @@ void CDlgTemp::OnRButtonUp(UINT nFlags, CPoint point)
 
 	CDialogEx::OnRButtonUp(nFlags, point);
 }
+
+void CDlgTemp::OnBnClickedBtnSave()
+{
+	// TODO: 在此添加控件通知处理程序代码
+
+	if (m_s32SetUpMode != 0) /* savefile */
+	{
+		if (m_csSaveFile == L"")
+		{
+			return;
+		}
+
+		CImage csImage;
+
+		csImage.Attach((HBITMAP)(m_pBMPForBMPDC->GetSafeHandle()));
+		csImage.Save(m_csSaveFile);
+	}
+
+	/* save config */
+
+}
+
+LRESULT CDlgTemp::ReloadBmpMessageCtrl(WPARAM wMsg, LPARAM lData)
+{
+	switch (wMsg)
+	{
+		case 0:
+		{
+			StRGB32Bit *pRGB = (StRGB32Bit *)lData;
+			if (pRGB != NULL)
+			{
+				if (m_pBmpBuf32Bit != NULL)
+				{
+					free(m_pBmpBuf32Bit);
+					m_pBmpBuf32Bit = NULL;
+				}
+
+				m_u32BmpWidth = pRGB->s32Width;
+				m_u32BmpHeight = pRGB->s32Height;
+				m_pBmpBuf32Bit = pRGB->pRGB;
+				return ReBuildBMPDC();
+
+			}
+		}
+		default:
+			break;
+	}
+	return 0;
+}
+
+
+

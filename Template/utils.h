@@ -83,5 +83,5 @@ int32_t BufToBmp(FILE *pFile, uint8_t *Buf, int32_t s32Height,
 	int32_t s32Width, int32_t s32BufOffset, bool boIsYP);
 int32_t RGBCopy(StRGB32Bit *pDest, int32_t s32DesX, int32_t s32DesY,
 	StRGB32Bit *pSrc, int32_t s32SrcX, int32_t s32SrcY,
-	int32_t s32Width, int32_t s32Height);
+	int32_t s32Width, int32_t s32Height, bool boYFlip = false);
 int32_t LoadBmp(FILE *pFile, StRGB32Bit *pDest);

@@ -140,6 +140,9 @@ public:
 	StFRelativeRect m_stFRelativeRect;
 
 public:
+	CDialogEx *m_pDlgTemp;
+
+public:
 	int32_t GetFolderSizeCBInner(const wchar_t *pName, WIN32_FIND_DATA *pInfo);
 	INT32 ReloadBMP(void);
 	INT32 ReDrawStaticPic(void);
@@ -150,4 +153,5 @@ public:
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
 };

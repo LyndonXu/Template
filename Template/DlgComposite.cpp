@@ -7,9 +7,43 @@
 #include "afxdialogex.h"
 #include "utils.h"
 
+#include "DlgTemp.h"
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
+
+
+const LPCTSTR c_pCursorType[_Point_On_Rect_Reserved] =
+{
+	IDC_ARROW,
+	IDC_SIZEALL,
+	IDC_SIZENESW,
+	IDC_SIZENESW,
+	IDC_SIZENS,
+	IDC_SIZENS,
+	IDC_SIZENWSE,
+	IDC_SIZENWSE,
+	IDC_SIZEWE,
+	IDC_SIZEWE,
+	IDC_HAND,
+	IDC_HAND,
+};
+const EMMouseStatus c_emMouseStatus[_Point_On_Rect_Reserved] =
+{
+	_Mouse_PIC_New,
+	_Mouse_PIC_RectMove,
+	_Mouse_PIC_RectRightUp,
+	_Mouse_PIC_RectLeftDown,
+	_Mouse_PIC_RectUp,
+	_Mouse_PIC_RectDown,
+	_Mouse_PIC_RectLeftUp,
+	_Mouse_PIC_RectRightDown,
+	_Mouse_PIC_RectLeft,
+	_Mouse_PIC_RectRight,
+	_Mouse_PIC_RectPoint,
+	_Mouse_PIC_RectLine,
+};
 
 // CDlgComposite 对话框
 
@@ -32,6 +66,10 @@ CDlgComposite::CDlgComposite(CWnd* pParent /*=NULL*/)
 	, m_pOldBMP(NULL)
 	, m_pCompsiteBMPForDC(NULL)
 	, m_emMouseStatus(_Mouse_UP)
+
+
+	, m_pDlgTemp(NULL)
+
 {
 
 }
@@ -58,6 +96,7 @@ BEGIN_MESSAGE_MAP(CDlgComposite, CDialogEx)
 	ON_WM_LBUTTONDOWN()
 	ON_WM_LBUTTONUP()
 	ON_WM_MOUSEMOVE()
+	ON_WM_LBUTTONDBLCLK()
 END_MESSAGE_MAP()
 
 
@@ -113,6 +152,17 @@ BOOL CDlgComposite::OnInitDialog()
 	CDialogEx::OnInitDialog();
 
 	// TODO:  在此添加额外的初始化
+	{
+		m_pDlgTemp = new CDlgTemp;
+		if (m_pDlgTemp != NULL)
+		{
+			((CDlgTemp *)m_pDlgTemp)->m_s32SetUpMode = 1;
+			((CDlgTemp *)m_pDlgTemp)->m_csSaveFile = L"f:\\test.bmp";
+			m_pDlgTemp->Create(IDD_DLG_Temp, GetDesktopWindow());
+			m_pDlgTemp->ShowWindow(SW_SHOW);
+		}
+	}
+
 
 	ReBuildCtrls();
 
@@ -160,6 +210,13 @@ BOOL CDlgComposite::OnInitDialog()
 BOOL CDlgComposite::DestroyWindow()
 {
 	// TODO: 在此添加专用代码和/或调用基类
+
+	if (m_pDlgTemp != NULL)
+	{
+		delete m_pDlgTemp;
+		m_pDlgTemp = NULL;
+	}
+
 	if (m_pBmpBuf32BitMaxCount != NULL)
 	{
 		free(m_pBmpBuf32BitMaxCount);
@@ -913,36 +970,96 @@ EMPointOnRectType PointInRect(POINT stPoint, RECT stRect)
 		return _Point_On_Rect_NotIn;
 	}
 }
-const LPCTSTR c_pCursorType[_Point_On_Rect_Reserved] =
+
+void CDlgComposite::OnLButtonDblClk(UINT nFlags, CPoint point)
 {
-	IDC_ARROW,
-	IDC_SIZEALL,
-	IDC_SIZENESW,
-	IDC_SIZENESW,
-	IDC_SIZENS,
-	IDC_SIZENS,
-	IDC_SIZENWSE,
-	IDC_SIZENWSE,
-	IDC_SIZEWE,
-	IDC_SIZEWE,
-	IDC_HAND,
-	IDC_HAND,
-};
-const EMMouseStatus c_emMouseStatus[_Point_On_Rect_Reserved] =
-{
-	_Mouse_PIC_New,
-	_Mouse_PIC_RectMove,
-	_Mouse_PIC_RectRightUp,
-	_Mouse_PIC_RectLeftDown,
-	_Mouse_PIC_RectUp,
-	_Mouse_PIC_RectDown,
-	_Mouse_PIC_RectLeftUp,
-	_Mouse_PIC_RectRightDown,
-	_Mouse_PIC_RectLeft,
-	_Mouse_PIC_RectRight,
-	_Mouse_PIC_RectPoint,
-	_Mouse_PIC_RectLine,
-};
+	// TODO: 在此添加消息处理程序代码和/或调用默认值
+
+	do 
+	{
+		if (PtInRect(&m_csRegionRectInPIC, point))
+		{
+			StFRelativeRect stRect = m_stFRelativeRect;
+			if (stRect.f32Left < 0.0f)
+			{
+				stRect.f32Left = 0.0f;
+			}
+
+			if (stRect.f32Top < 0.0f)
+			{
+				stRect.f32Top = 0.0f;
+			}
+
+			if (stRect.f32Bottom > 1.0f)
+			{
+				stRect.f32Bottom = 1.0f;
+			}
+
+			if (stRect.f32Right > 1.0f)
+			{
+				stRect.f32Right = 1.0f;
+			}
+
+			if (stRect.f32Left > stRect.f32Right)
+			{
+				break;
+			}
+
+			if (stRect.f32Top > stRect.f32Bottom)
+			{
+				break;
+			}
+
+			CRect csRect;
+			csRect.left = (LONG)(m_u32CompsiteBmpWidth * stRect.f32Left + 0.5f);
+			csRect.right = (LONG)(m_u32CompsiteBmpWidth * stRect.f32Right + 0.5f);
+
+			csRect.top = (LONG)(m_u32CompsiteBmpHeight * (1.0 - stRect.f32Bottom) + 0.5f);
+			csRect.bottom = (LONG)(m_u32CompsiteBmpHeight * (1.0 - stRect.f32Top) + 0.5f);
+
+			StRGB32Bit stRGB = { 0 };
+			stRGB.s32Width = csRect.Width();
+			stRGB.s32Height = csRect.Height();
+			stRGB.pRGB = (uint32_t *)malloc(stRGB.s32Width * stRGB.s32Height * 4);
+			if (stRGB.pRGB == NULL)
+			{
+				break;
+			}
+			StRGB32Bit stRGBSrc =
+			{
+				(int32_t)m_u32CompsiteBmpWidthMaxCount,
+				(int32_t)m_u32CompsiteBmpHeightMaxCount,
+				m_pBmpBuf32BitMaxCount,
+			};
+			RGBCopy(&stRGB, 0, 0, &stRGBSrc,
+				csRect.left, csRect.top, csRect.Width(), csRect.Height());
+
+			if (m_pDlgTemp != NULL)
+			{
+				((CDlgTemp *)m_pDlgTemp)->ReloadBMP(&stRGB);
+			}
+
+#if 0
+			{
+				FILE *pFile = NULL;
+				INT ret = _wfopen_s(&pFile, L"f:\\DCLK.bmp", L"wb+");
+				if (ret == 0)
+				{
+					BufToBmp(pFile, (uint8_t *)stRGB.pRGB, 
+						stRGB.s32Height, stRGB.s32Width, 4, true);
+					fclose(pFile);
+				}
+			}
+#endif
+			free(stRGB.pRGB);
+
+		}
+	} while (0);
+
+	CDialogEx::OnLButtonDblClk(nFlags, point);
+}
+
+
 void CDlgComposite::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
@@ -1098,3 +1215,5 @@ void CDlgComposite::OnMouseMove(UINT nFlags, CPoint point)
 	}
 	CDialogEx::OnMouseMove(nFlags, point);
 }
+
+

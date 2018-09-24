@@ -1,6 +1,8 @@
 #pragma once
 #include "afxwin.h"
 #include "PolygonCtrl.h"
+#include "utils.h"
+
 
 typedef list<CPolygonCtrl> CListPolygonCtrl;
 typedef list<CPolygonCtrl>::iterator CListPolygonCtrlIter;
@@ -35,6 +37,8 @@ public:
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
+	afx_msg void OnBnClickedBtnSave();
+	LRESULT ReloadBmpMessageCtrl(WPARAM wMsg, LPARAM lData);
 
 
 	void ReBuildCtrls(void);
@@ -42,6 +46,7 @@ public:
 public:
 	CString m_csScanFloder;
 	CString m_csLoadFile;
+	CString m_csSaveFile;
 
 	UINT32	m_u32BmpWidth;
 	UINT32	m_u32BmpHeight;
@@ -50,6 +55,7 @@ public:
 	EMMouseStatus m_emMouseStatus;
 	INT32	m_s32OperatoinIndex;
 
+	INT32	m_s32SetUpMode;
 
 public:
 	CStatic m_csStaticPIC;
@@ -70,6 +76,16 @@ public:
 	INT32 ReloadBMP(void);
 	INT32 ReBuildBMPDC(void);
 	INT32 ReDrawStaticPic(void);
+
+	INT32 ReloadBMP(StRGB32Bit *pRGB);
+
+public:
+	CWnd *m_pCreateWnd;
+
+	void SetCreateWND(CWnd *pWnd)
+	{
+		m_pCreateWnd = pWnd;
+	}
 
 };
 
