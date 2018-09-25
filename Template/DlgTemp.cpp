@@ -286,6 +286,18 @@ INT32 CDlgTemp::ReloadBMP(void)
 	m_u32BmpWidth = stRGB.s32Width;
 	m_u32BmpHeight = stRGB.s32Height;
 	m_pBmpBuf32Bit = stRGB.pRGB;
+
+#if 0
+	{
+		for (UINT i = 0; i < stRGB.s32Height; i++)
+		{
+			g_u32Row[i] = *(stRGB.pRGB + i * stRGB.s32Width);
+		}
+		g_u32Row[0] = g_u32Row[0];
+	}
+
+#endif
+
 	return ReBuildBMPDC();
 }
 
@@ -370,7 +382,7 @@ INT32 CDlgTemp::ReBuildBMPDC(void)
 		ZeroMemory(&bmpInfo, sizeof(BITMAPINFO));
 		bmpInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
 		bmpInfo.bmiHeader.biWidth = m_u32BmpWidth;
-		bmpInfo.bmiHeader.biHeight = m_u32BmpHeight;
+		bmpInfo.bmiHeader.biHeight = 0 - m_u32BmpHeight;
 		bmpInfo.bmiHeader.biPlanes = 1;
 		bmpInfo.bmiHeader.biBitCount = 32;
 		bmpInfo.bmiHeader.biCompression = BI_RGB;

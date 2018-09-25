@@ -60,7 +60,7 @@ CDlgComposite::CDlgComposite(CWnd* pParent /*=NULL*/)
 	, m_u32CompsiteBmpHeight(0)
 	, m_u32CompsiteBmpWidthMaxCount(0)
 	, m_u32CompsiteBmpHeightMaxCount(0)
-	, m_u32Rotate(_Rotate_90)
+	, m_u32Rotate(_Rotate_270)
 
 	, m_pCompsiteDC(NULL)
 	, m_pOldBMP(NULL)
@@ -522,6 +522,16 @@ INT32 CDlgComposite::ReloadBMP(void)
 			}
 		}
 #endif
+#if 0
+		{
+			for (UINT i = 0; i < stRGB.s32Height; i++)
+			{
+				g_u32Row[i] = *(stRGB.pRGB + i * stRGB.s32Width);
+			}
+			g_u32Row[0] = g_u32Row[0];
+		}
+
+#endif
 		UINT32 *pBmpBuf = stRGB.pRGB;
 		AutoFree csFreeBmpBuf(pBmpBuf);
 
@@ -551,7 +561,8 @@ INT32 CDlgComposite::ReloadBMP(void)
 				for (INT32 i = 0; i < s32DestWidth; i++)	/* X */
 				{
 					pBmpRotateBuf[j * s32DestWidth + i] =
-						pBmpBuf[i * s32Width + s32Width - 1 - j];
+						//pBmpBuf[i * s32Width + s32Width - 1 - j];
+						pBmpBuf[(s32Height - 1 - i) * s32Width + j];
 				}
 			}
 #if 0
@@ -599,7 +610,7 @@ INT32 CDlgComposite::ReloadBMP(void)
 				for (INT32 i = 0; i < s32DestWidth; i++)	/* X */
 				{
 					pBmpRotateBuf[j * s32DestWidth + i] =
-						pBmpBuf[(s32Height - 1 - i) * s32Width + j];
+						pBmpBuf[i * s32Width + s32Width - 1 - j];
 				}
 			}
 #if 0
@@ -613,6 +624,17 @@ INT32 CDlgComposite::ReloadBMP(void)
 				}
 			}
 #endif
+#if 0
+			{
+				for (UINT i = 0; i < s32DestHeight; i++)
+				{
+					g_u32Row[i] = *(pBmpRotateBuf + i * s32DestWidth);
+				}
+				g_u32Row[0] = g_u32Row[0];
+			}
+
+#endif
+
 		}
 		
 
@@ -705,7 +727,7 @@ INT32 CDlgComposite::ReloadBMP(void)
 		ZeroMemory(&bmpInfo, sizeof(BITMAPINFO));
 		bmpInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
 		bmpInfo.bmiHeader.biWidth = m_u32CompsiteBmpWidthMaxCount;
-		bmpInfo.bmiHeader.biHeight = m_u32CompsiteBmpHeightMaxCount;
+		bmpInfo.bmiHeader.biHeight = 0 - m_u32CompsiteBmpHeightMaxCount;
 		bmpInfo.bmiHeader.biPlanes = 1;
 		bmpInfo.bmiHeader.biBitCount = 32;
 		bmpInfo.bmiHeader.biCompression = BI_RGB;
@@ -715,11 +737,33 @@ INT32 CDlgComposite::ReloadBMP(void)
 		bmpInfo.bmiHeader.biClrUsed = 0;
 		bmpInfo.bmiHeader.biClrImportant = 0;
 
+#if 0
+		{
+			for (UINT i = 0; i < m_u32CompsiteBmpHeightMaxCount; i++)
+			{
+				g_u32Row[i] = *(m_pBmpBuf32BitMaxCount + i * m_u32CompsiteBmpWidthMaxCount);
+			}
+			g_u32Row[0] = g_u32Row[0];
+		}
+
+#endif
+
 		::SetDIBits(m_pCompsiteDC->GetSafeHdc(),
 			(HBITMAP)(m_pCompsiteBMPForDC->GetSafeHandle()),
 			0, m_u32CompsiteBmpHeightMaxCount,
 			m_pBmpBuf32BitMaxCount,
 			&bmpInfo, DIB_RGB_COLORS);
+
+#if 0
+		{
+			for (UINT i = 0; i < m_u32CompsiteBmpHeightMaxCount; i++)
+			{
+				g_u32Row[i] = *(m_pBmpBuf32BitMaxCount + i * m_u32CompsiteBmpWidthMaxCount);
+			}
+			g_u32Row[0] = g_u32Row[0];
+		}
+
+#endif
 
 #if 0
 		{
@@ -1014,8 +1058,10 @@ void CDlgComposite::OnLButtonDblClk(UINT nFlags, CPoint point)
 			csRect.left = (LONG)(m_u32CompsiteBmpWidth * stRect.f32Left + 0.5f);
 			csRect.right = (LONG)(m_u32CompsiteBmpWidth * stRect.f32Right + 0.5f);
 
-			csRect.top = (LONG)(m_u32CompsiteBmpHeight * (1.0 - stRect.f32Bottom) + 0.5f);
-			csRect.bottom = (LONG)(m_u32CompsiteBmpHeight * (1.0 - stRect.f32Top) + 0.5f);
+			//csRect.top = (LONG)(m_u32CompsiteBmpHeight * (1.0 - stRect.f32Bottom) + 0.5f);
+			//csRect.bottom = (LONG)(m_u32CompsiteBmpHeight * (1.0 - stRect.f32Top) + 0.5f);
+			csRect.top = (LONG)(m_u32CompsiteBmpHeight * (stRect.f32Top) + 0.5f);
+			csRect.bottom = (LONG)(m_u32CompsiteBmpHeight * (stRect.f32Bottom) + 0.5f);
 
 			StRGB32Bit stRGB = { 0 };
 			stRGB.s32Width = csRect.Width();
@@ -1051,6 +1097,25 @@ void CDlgComposite::OnLButtonDblClk(UINT nFlags, CPoint point)
 				}
 			}
 #endif
+
+#if 0
+			{
+				for (UINT i = 0; i < stRGB.s32Height; i++)
+				{
+					g_u32Row[i] = *(stRGB.pRGB + i *  stRGB.s32Width);
+				}
+				g_u32Row[0] = g_u32Row[0];
+			}
+
+			{
+				for (UINT i = 0; i < stRGBSrc.s32Height; i++)
+				{
+					g_u32Row[i] = *(stRGBSrc.pRGB + i *  stRGBSrc.s32Width);
+				}
+				g_u32Row[0] = g_u32Row[0];
+			}
+#endif
+
 			free(stRGB.pRGB);
 
 		}

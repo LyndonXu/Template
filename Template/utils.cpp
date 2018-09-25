@@ -1,5 +1,8 @@
 #include "stdafx.h"
 #include "utils.h"
+#ifdef _DEBUG
+UINT32 g_u32Row[1024 * 1024];
+#endif
 
 int64_t GetFolderSize(const wchar_t *pPath, PFUN_GetFolderSizeCB pFunCB/* = NULL*/,
 	void *pContext/* = NULL*/)
@@ -166,11 +169,11 @@ int32_t BufToBmp(FILE *pFile, uint8_t *Buf, int32_t s32Height, int32_t s32Width,
 	stInfoHeader.biWidth = s32Width;
 	if (!boIsYP)
 	{
-		stInfoHeader.biHeight = 0 - s32Height;
+		stInfoHeader.biHeight = s32Height;
 	}
 	else
 	{
-		stInfoHeader.biHeight = s32Height;
+		stInfoHeader.biHeight = 0 - s32Height;
 	}
 	stInfoHeader.biPlanes = 1;
 	stInfoHeader.biBitCount = 24;
@@ -271,11 +274,8 @@ int32_t LoadBmp(FILE *pFile, StRGB32Bit *pDest)
 	bool boIsYP = false;
 	if (stInfoHeader.biHeight < 0)
 	{
-		stInfoHeader.biHeight = 0 - stInfoHeader.biHeight;
-	}
-	else
-	{
 		boIsYP = true;
+		stInfoHeader.biHeight = 0 - stInfoHeader.biHeight;
 	}
 
 	if (stInfoHeader.biSizeImage == 0)

@@ -6,6 +6,11 @@
 
 #include <windows.h>
 
+#ifdef _DEBUG
+extern UINT32 g_u32Row[1024 * 1024];
+#endif
+
+
 using namespace std;
 
 #define PRINT(x, ...)	{char temp[512];sprintf_s(temp,512,"[%s, %d]: "##x, __FILE__, __LINE__, ##__VA_ARGS__);OutputDebugStringA(temp);}
