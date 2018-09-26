@@ -70,7 +70,7 @@ public:
 	//CPolygonCtrl m_csPolygonCtrl;
 	CListPolygonCtrl m_csListPolygonCtrl;
 	CPolygonCtrl *m_pPolygonCtrl;
-
+	bool m_boPolygonChange;
 
 public:
 	INT32 ReloadBMP(void);

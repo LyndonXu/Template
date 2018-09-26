@@ -391,6 +391,61 @@ INT32 CPolygonCtrl::DeletePoint(INT32 x, INT32 y, INT32 s32Index/* = ~0*/)
 	return 0;
 
 }
+INT32 CPolygonCtrl::ReBuildIndexAndLine(bool boUseUnionPoint/* = false*/)
+{
+	if (m_csPoints.size() == 0)
+	{
+		return -1;
+	}
+	CListPointExIter iter;
+
+	INT32 s32Index = 0;
+
+	CListPointExIter iterTmp = m_csPoints.end();
+	iterTmp--;
+	for (iter = m_csPoints.begin(); iter != iterTmp; iter++, s32Index++)
+	{
+		CListPointExIter iterNext = iter;
+		iterNext++;
+
+		StLine stLine = { 0.0 };
+
+		iter->m_s32Index = s32Index;
+		iter->m_s32LineFlag = LINE_VALID;
+		if (!boUseUnionPoint)
+		{
+			GetLine(iter->m_stPoint.x, iter->m_stPoint.y,
+				iterNext->m_stPoint.x, iterNext->m_stPoint.y, &stLine);
+		}
+		else
+		{
+			GetLine(iter->m_stPoint.X, iter->m_stPoint.Y,
+				iterNext->m_stPoint.X, iterNext->m_stPoint.Y, &stLine);
+		}
+		iter->m_stLine = stLine;
+	}
+
+	{
+		CListPointExIter iterNext = m_csPoints.begin();
+		StLine stLine = { 0.0 };
+
+		iter->m_s32Index = s32Index;
+		iter->m_s32LineFlag = LINE_VALID;
+		if (!boUseUnionPoint)
+		{
+			GetLine(iter->m_stPoint.x, iter->m_stPoint.y,
+				iterNext->m_stPoint.x, iterNext->m_stPoint.y, &stLine);
+		}
+		else
+		{
+			GetLine(iter->m_stPoint.X, iter->m_stPoint.Y,
+				iterNext->m_stPoint.X, iterNext->m_stPoint.Y, &stLine);
+		}
+		iter->m_stLine = stLine;
+	}
+	return 0;
+}
+
 INT32 CPolygonCtrl::MovePolygon(INT32 xOffset, INT32 yOffset)
 {
 	if (m_csPoints.size() == 0)
@@ -404,6 +459,9 @@ INT32 CPolygonCtrl::MovePolygon(INT32 xOffset, INT32 yOffset)
 		iter->m_stPoint.y += yOffset;
 	}
 
+#if 1
+	ReBuildIndexAndLine();
+#else
 	CListPointExIter iterTmp = m_csPoints.end();
 	iterTmp--;
 	for (iter = m_csPoints.begin(); iter != iterTmp; iter++)
@@ -426,7 +484,7 @@ INT32 CPolygonCtrl::MovePolygon(INT32 xOffset, INT32 yOffset)
 			iterNext->m_stPoint.x, iterNext->m_stPoint.y, &stLine);
 		iter->m_stLine = stLine;
 	}
-
+#endif
 	return 0;
 }
 
@@ -553,6 +611,8 @@ INT32 CPolygonCtrl::ReloadRelativePoint(RECT *pRect)
 		iter->m_stPoint.x = (INT32)(iter->m_stPoint.X * s32Width + pRect->left);
 		iter->m_stPoint.y = (INT32)(iter->m_stPoint.Y * s32Height + pRect->top);
 	}
+
+	ReBuildIndexAndLine();
 
 	return 0;
 }

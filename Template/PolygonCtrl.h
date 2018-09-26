@@ -60,6 +60,7 @@ public:
 	INT32 MovePoint(INT32 xOffset, INT32 yOffset, INT32 s32Index = ~0);
 	INT32 ReBuildUnionPoint(RECT *pRect);
 	INT32 ReloadRelativePoint(RECT *pRect);
+	INT32 ReBuildIndexAndLine(bool boUseUnionPoint = false);
 	bool IsPolygonValid(void)
 	{
 		return m_csPoints.size() > 2;

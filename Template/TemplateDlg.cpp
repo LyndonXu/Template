@@ -165,8 +165,8 @@ void CTemplateDlg::OnBnClickedBtnNew()
 
 	CDlgComposite csDlg;
 
-	//csDlg.m_csScanFloder = L"E:\\workspace\\MobileScreenDiscern\\rgb";
-	csDlg.m_csScanFloder = L"F:\\work\\shoujipingmushibie\\rgb";
+	csDlg.m_csScanFloder = L"E:\\workspace\\MobileScreenDiscern\\rgb";
+	//csDlg.m_csScanFloder = L"F:\\work\\shoujipingmushibie\\rgb";
 
 	csDlg.DoModal();
 }
@@ -177,9 +177,9 @@ void CTemplateDlg::OnBnClickedBtnLoad()
 	// TODO: 在此添加控件通知处理程序代码
 
 	CDlgTemp csDlg;
-	//csDlg.m_csScanFloder = L"E:\\workspace\\MobileScreenDiscern";
-	//csDlg.m_csLoadFile = L"Mode.bmp";
-	csDlg.m_csScanFloder = L"F:\\work\\shoujipingmushibie\\rgb1";
-	csDlg.m_csLoadFile = L"2018_9_15_9_38_19_409.bmp";
+	csDlg.m_csScanFloder = L"E:\\workspace\\MobileScreenDiscern";
+	csDlg.m_csLoadFile = L"Mode.bmp";
+	//csDlg.m_csScanFloder = L"F:\\work\\shoujipingmushibie\\rgb1";
+	//csDlg.m_csLoadFile = L"2018_9_15_9_38_19_409.bmp";
 	csDlg.DoModal();
 }

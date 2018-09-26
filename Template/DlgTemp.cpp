@@ -8,6 +8,20 @@
 
 #include "utils.h"
 #include "DlgComposite.h"
+#include "../json_c/json.h"
+
+#ifdef _DEBUG
+
+#ifndef _WIN64
+#pragma comment(lib, "../Debug/json_c.lib")
+
+#else
+#endif
+
+#else
+
+#endif // _DEBUG
+
 
 
 #define RELOAD_BMP_MSG	(WM_USER + 200)
@@ -34,6 +48,7 @@ CDlgTemp::CDlgTemp(CWnd* pParent /*=NULL*/)
 	, m_pOldBMP(NULL)
 
 	, m_pPolygonCtrl(NULL)
+	, m_boPolygonChange(false)
 
 	, m_pCreateWnd(NULL)
 
@@ -297,6 +312,89 @@ INT32 CDlgTemp::ReloadBMP(void)
 	}
 
 #endif
+	do
+	{
+		csFile.Replace(L".bmp", L".json");
+		string csStrJsonFile;
+		Convert(csFile.GetString(), csStrJsonFile);
+
+		json_object *pRootArr = json_object_from_file(csStrJsonFile.c_str());
+
+		if (pRootArr == NULL)
+		{
+			break;
+		}
+
+		if (json_object_get_type(pRootArr) != json_type_array)
+		{
+			json_object_put(pRootArr);
+			break;
+		}
+
+		if (json_object_array_length(pRootArr) <= 0)
+		{
+			json_object_put(pRootArr);
+			break;
+		}
+
+		m_csListPolygonCtrl.clear();
+
+		for (INT32 i = 0; i < json_object_array_length(pRootArr); i++)
+		{
+			json_object *pObjArray = json_object_array_get_idx(pRootArr, i);
+			
+			if (json_object_get_type(pObjArray) != json_type_array)
+			{
+				continue;
+			}
+
+			if (json_object_array_length(pObjArray) <= 0)
+			{
+				continue;
+			}
+
+			CPolygonCtrl csCtrl;
+			m_csListPolygonCtrl.push_back(csCtrl);
+			CListPolygonCtrlIter iter = m_csListPolygonCtrl.end();
+			iter--;
+			for (INT32 j = 0; j < json_object_array_length(pObjArray); j++)
+			{
+				json_object *pObj = json_object_array_get_idx(pObjArray, j);
+				if (json_object_get_type(pObj) != json_type_object)
+				{
+					continue;
+				}
+
+				json_object *pX = NULL; 
+				json_object *pY = NULL;
+
+				json_object_object_get_ex(pObj, "x", &pX);
+				json_object_object_get_ex(pObj, "y", &pY);
+
+				if (pX == NULL || pY == NULL)
+				{
+					continue;
+				}
+				if (json_object_get_type(pX) != json_type_double
+					|| json_object_get_type(pY) != json_type_double)
+				{
+					continue;
+				}
+				iter->m_csPoints.push_back(StPointEx{ 0, 0, 0, {0, 0,
+					json_object_get_double(pX),
+					json_object_get_double(pY),	}, });
+			}
+
+			if (iter->m_csPoints.size() == 0)
+			{
+				m_csListPolygonCtrl.erase(iter);
+			}
+		}
+
+		json_object_put(pRootArr);
+
+	} while (0);
+
 
 	return ReBuildBMPDC();
 }
@@ -469,6 +567,13 @@ INT32 CDlgTemp::ReDrawStaticPic(void)
 		for (iterCtrl = m_csListPolygonCtrl.begin(); 
 			iterCtrl != m_csListPolygonCtrl.end(); iterCtrl++)
 		{
+			CPolygonCtrl *pCtrl = &(*iterCtrl);
+			COLORREF dwColor = RGB(0, 255, 0);
+			if (m_pPolygonCtrl == pCtrl)
+			{
+				dwColor = RGB(255, 0, 0);
+			}
+
 			if (iterCtrl->m_csPoints.size() != 0)
 			{
 				if (m_emMouseStatus == _Mouse_UP)
@@ -490,14 +595,14 @@ INT32 CDlgTemp::ReDrawStaticPic(void)
 					pPoint[i].y = iter->m_stPoint.y;
 				}
 
-				CPen csPen(PS_SOLID, 1, RGB(255, 0, 0));
+				CPen csPen(PS_SOLID, 1, dwColor);
 				CPen *pOldPen = (CPen *)csMemDC.SelectObject(&csPen);
 				csMemDC.SelectStockObject(NULL_BRUSH);
 				csMemDC.SetBkMode(TRANSPARENT);
 
 				csMemDC.Polygon(pPoint, iterCtrl->m_csPoints.size());
 
-				CBrush brush(RGB(255, 0, 0));
+				CBrush brush(dwColor);
 				CBrush *pOldBrush = csMemDC.SelectObject(&brush);
 				for (UINT i = 0; i < iterCtrl->m_csPoints.size(); i++)
 				{
@@ -566,6 +671,7 @@ void CDlgTemp::OnLButtonDown(UINT nFlags, CPoint point)
 				iter--;
 
 				m_pPolygonCtrl = &(*iter);
+				m_boPolygonChange = true;
 			}
 			m_pPolygonCtrl->InsertPoint(point.x, point.y);
 		}
@@ -578,6 +684,7 @@ void CDlgTemp::OnLButtonDown(UINT nFlags, CPoint point)
 			else if (emType == _Point_On_Rect_LINE_HAND)
 			{
 				m_pPolygonCtrl->InsertPoint(point.x, point.y, m_s32OperatoinIndex);
+				m_boPolygonChange = true;
 			}
 			else if (emType == _Point_On_Rect_POINT_HAND)
 			{
@@ -669,6 +776,7 @@ void CDlgTemp::OnMouseMove(UINT nFlags, CPoint point)
 				x - m_csPrevDownMovePoint.x,
 				y - m_csPrevDownMovePoint.y);
 			m_csPrevDownMovePoint = point;
+			m_boPolygonChange = true;
 			break;
 		}
 		case _Mouse_PIC_RectPoint:
@@ -677,6 +785,7 @@ void CDlgTemp::OnMouseMove(UINT nFlags, CPoint point)
 				x - m_csPrevDownMovePoint.x,
 				y - m_csPrevDownMovePoint.y, m_s32OperatoinIndex);
 			m_csPrevDownMovePoint = point;
+			m_boPolygonChange = true;
 			break;
 		}
 
@@ -745,6 +854,7 @@ void CDlgTemp::OnRButtonUp(UINT nFlags, CPoint point)
 		else if (emType == _Point_On_Rect_SIZEALL)
 		{
 			m_csListPolygonCtrl.erase(iter);
+			m_boPolygonChange = true;
 			m_pPolygonCtrl = NULL;
 		}
 		else if (emType == _Point_On_Rect_LINE_HAND)
@@ -754,6 +864,7 @@ void CDlgTemp::OnRButtonUp(UINT nFlags, CPoint point)
 		else if (emType == _Point_On_Rect_POINT_HAND)
 		{
 			iter->DeletePoint(point.x, point.y, m_s32OperatoinIndex);
+			m_boPolygonChange = true;
 		}
 	}
 
@@ -778,6 +889,77 @@ void CDlgTemp::OnBnClickedBtnSave()
 	}
 
 	/* save config */
+
+	if (!m_boPolygonChange)
+	{
+		return;
+	}
+
+
+	if (m_csListPolygonCtrl.size() == 0)
+	{
+		return;
+	}
+
+
+	CString csStr = m_csSaveFile;
+	if (m_csSaveFile == L"" && m_csLoadFile == L"")
+	{
+		return;
+	}
+	if (csStr == L"")
+	{
+		if (m_csScanFloder.GetLength() != 0)
+		{
+			csStr = m_csScanFloder + L"\\";
+		}
+		csStr += m_csLoadFile;
+	}
+	csStr.Replace(L".bmp", L".json");
+	string csJsonFileName;
+	Convert(csStr.GetString(), csJsonFileName);
+
+	json_object *pObjRoot = json_object_new_array();
+	do 
+	{
+		if (pObjRoot == NULL)
+		{
+			break;
+		}
+		CListPolygonCtrlIter iterCtrl;
+		for (iterCtrl = m_csListPolygonCtrl.begin();
+			iterCtrl != m_csListPolygonCtrl.end(); iterCtrl++)
+		{
+			if (iterCtrl->m_csPoints.size() != 0)
+			{
+				json_object *pObjArray = json_object_new_array();
+				if (pObjArray == NULL)
+				{
+					continue;
+				}
+
+				CListPointExIter iter = iterCtrl->m_csPoints.begin();
+				for (; iter != iterCtrl->m_csPoints.end(); iter++)
+				{
+					json_object *pObj = json_object_new_object();
+					if (pObj == NULL)
+					{
+						continue;
+					}
+					json_object_object_add(pObj, "x", json_object_new_double(iter->m_stPoint.X));
+					json_object_object_add(pObj, "y", json_object_new_double(iter->m_stPoint.Y));
+					json_object_array_add(pObjArray, pObj);
+				}
+
+				json_object_array_add(pObjRoot, pObjArray);
+			}
+		}
+	} while (0);
+
+	json_object_to_file_ext(csJsonFileName.c_str(), pObjRoot, JSON_C_TO_STRING_PRETTY);
+
+	json_object_put(pObjRoot);
+	m_boPolygonChange = false;
 
 }
 
