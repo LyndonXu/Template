@@ -26,6 +26,7 @@ protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV Ö§³Ö
 	virtual BOOL OnInitDialog();
 	virtual BOOL DestroyWindow();
+	virtual BOOL PreTranslateMessage(MSG* pMsg);
 
 	DECLARE_MESSAGE_MAP()
 public:
@@ -38,6 +39,7 @@ public:
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnBnClickedBtnSave();
+	afx_msg void OnBnClickedBtnDelepolygon();
 	LRESULT ReloadBmpMessageCtrl(WPARAM wMsg, LPARAM lData);
 
 

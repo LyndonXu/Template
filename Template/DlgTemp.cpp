@@ -103,6 +103,7 @@ BEGIN_MESSAGE_MAP(CDlgTemp, CDialogEx)
 	ON_MESSAGE(RELOAD_BMP_MSG, &ReloadBmpMessageCtrl)
 
 	ON_BN_CLICKED(IDC_BTN_Save, &CDlgTemp::OnBnClickedBtnSave)
+	ON_BN_CLICKED(IDC_BTN_DelePolygon, &CDlgTemp::OnBnClickedBtnDelepolygon)
 END_MESSAGE_MAP()
 
 
@@ -157,6 +158,19 @@ BOOL CDlgTemp::DestroyWindow()
 	// TODO: 在此添加专用代码和/或调用基类
 	KillTimer(1);
 	return CDialogEx::DestroyWindow();
+}
+
+
+BOOL CDlgTemp::PreTranslateMessage(MSG* pMsg)
+{
+	// TODO: 在此添加专用代码和/或调用基类
+
+	if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_ESCAPE)
+		return TRUE;
+	if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_RETURN)
+		return TRUE;
+
+	return CDialogEx::PreTranslateMessage(pMsg);
 }
 
 
@@ -246,22 +260,29 @@ void CDlgTemp::ReBuildCtrls(void)
 	}
 
 	{
+#define ID_COUNT	2
+		const UINT32 u32ID[ID_COUNT] = { IDC_BTN_Save, IDC_BTN_DelePolygon};
+
 		CRect csClient;
 		GetWindowRect(&csClient);
-		CWnd *pCtrl = GetDlgItem(IDC_BTN_Save);
-
-		if (pCtrl != NULL && pCtrl->GetSafeHwnd() != NULL)
+		for (UINT32 i = 0; i < ID_COUNT; i++)
 		{
-			CRect csRect;
-			pCtrl->GetWindowRect(csRect);
+			CWnd *pCtrl = GetDlgItem(u32ID[i]);
+			if (pCtrl != NULL && pCtrl->GetSafeHwnd() != NULL)
+			{
+				CRect csRect;
+				pCtrl->GetWindowRect(csRect);
 
-			csRect.MoveToXY(csClient.left + 20, csClient.bottom - 35);
+				csRect.MoveToXY(csClient.left + 20 + i * (csRect.Width() + 30), csClient.bottom - 35);
 
-			ScreenToClient(&csRect);
+				ScreenToClient(&csRect);
 
-			pCtrl->MoveWindow(csRect);
+				pCtrl->MoveWindow(csRect);
 
+			}
 		}
+#undef ID_COUNT
+
 	}
 
 }
@@ -853,9 +874,11 @@ void CDlgTemp::OnRButtonUp(UINT nFlags, CPoint point)
 		}
 		else if (emType == _Point_On_Rect_SIZEALL)
 		{
+#if 0
 			m_csListPolygonCtrl.erase(iter);
 			m_boPolygonChange = true;
 			m_pPolygonCtrl = NULL;
+#endif
 		}
 		else if (emType == _Point_On_Rect_LINE_HAND)
 		{
@@ -962,6 +985,29 @@ void CDlgTemp::OnBnClickedBtnSave()
 	m_boPolygonChange = false;
 
 }
+
+void CDlgTemp::OnBnClickedBtnDelepolygon()
+{
+	// TODO: 在此添加控件通知处理程序代码
+
+	if (m_csListPolygonCtrl.size() != 0 && m_pPolygonCtrl != NULL)
+	{
+		CListPolygonCtrlIter iter = m_csListPolygonCtrl.begin();
+		for (; iter != m_csListPolygonCtrl.end(); iter++)
+		{
+			CPolygonCtrl *pTmp = &(*iter);
+			if (pTmp == m_pPolygonCtrl)
+			{
+				m_csListPolygonCtrl.erase(iter);
+				m_pPolygonCtrl = NULL;
+				m_boPolygonChange = true;
+				break;
+			}
+		}
+	}
+
+}
+
 
 LRESULT CDlgTemp::ReloadBmpMessageCtrl(WPARAM wMsg, LPARAM lData)
 {

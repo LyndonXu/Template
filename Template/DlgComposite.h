@@ -96,6 +96,7 @@ protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV Ö§³Ö
 	virtual BOOL OnInitDialog();
 	virtual BOOL DestroyWindow();
+	virtual BOOL PreTranslateMessage(MSG* pMsg);
 
 	DECLARE_MESSAGE_MAP()
 public:
@@ -109,6 +110,7 @@ public:
 
 public:
 	CString m_csScanFloder;
+	CString m_csSaveFile;
 	CSetFileInfo m_csSetFile;
 
 	CSetFileInfoIter m_IterCur;
@@ -154,4 +156,5 @@ public:
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
+	afx_msg void OnBnClickedBtnPreview();
 };

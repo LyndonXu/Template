@@ -52,6 +52,7 @@ IMPLEMENT_DYNAMIC(CDlgComposite, CDialogEx)
 CDlgComposite::CDlgComposite(CWnd* pParent /*=NULL*/)
 	: CDialogEx(IDD_DLG_Composite, pParent)
 	, m_csScanFloder(L"")
+	, m_csSaveFile(L"")
 	, m_u32CompsiteCount(3)
 	, m_u32BmpWidth(0)
 	, m_u32BmpHeight(0)
@@ -97,6 +98,7 @@ BEGIN_MESSAGE_MAP(CDlgComposite, CDialogEx)
 	ON_WM_LBUTTONUP()
 	ON_WM_MOUSEMOVE()
 	ON_WM_LBUTTONDBLCLK()
+	ON_BN_CLICKED(IDC_BTN_Preview, &CDlgComposite::OnBnClickedBtnPreview)
 END_MESSAGE_MAP()
 
 
@@ -157,7 +159,7 @@ BOOL CDlgComposite::OnInitDialog()
 		if (m_pDlgTemp != NULL)
 		{
 			((CDlgTemp *)m_pDlgTemp)->m_s32SetUpMode = 1;
-			((CDlgTemp *)m_pDlgTemp)->m_csSaveFile = L"f:\\test.bmp";
+			((CDlgTemp *)m_pDlgTemp)->m_csSaveFile = m_csSaveFile;
 			m_pDlgTemp->Create(IDD_DLG_Temp, GetDesktopWindow());
 			m_pDlgTemp->ShowWindow(SW_SHOW);
 		}
@@ -241,6 +243,19 @@ BOOL CDlgComposite::DestroyWindow()
 	return CDialogEx::DestroyWindow();
 }
 
+BOOL CDlgComposite::PreTranslateMessage(MSG* pMsg)
+{
+	// TODO: 在此添加专用代码和/或调用基类
+
+	if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_ESCAPE)
+		return TRUE;
+	if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_RETURN)
+		return TRUE;
+
+	return CDialogEx::PreTranslateMessage(pMsg);
+}
+
+
 // CDlgComposite 消息处理程序
 
 
@@ -273,7 +288,11 @@ void CDlgComposite::ReBuildCtrls(void)
 
 	{
 #define ID_COUNT	4
-		const UINT32 u32ID[ID_COUNT] = { IDC_COMBO_Count, IDC_BTN_Prev, IDC_BTN_Next, IDOK };
+		const UINT32 u32ID[ID_COUNT] = 
+		{ 
+			IDC_COMBO_Count, IDC_BTN_Prev, 
+			IDC_BTN_Next, IDC_BTN_Preview,
+		};
 		CRect csClient;
 		GetWindowRect(&csClient);
 		for (UINT32 i = 0; i < ID_COUNT; i++)
@@ -1019,107 +1038,10 @@ void CDlgComposite::OnLButtonDblClk(UINT nFlags, CPoint point)
 {
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
 
-	do 
+	if (PtInRect(&m_csRegionRectInPIC, point))
 	{
-		if (PtInRect(&m_csRegionRectInPIC, point))
-		{
-			StFRelativeRect stRect = m_stFRelativeRect;
-			if (stRect.f32Left < 0.0f)
-			{
-				stRect.f32Left = 0.0f;
-			}
-
-			if (stRect.f32Top < 0.0f)
-			{
-				stRect.f32Top = 0.0f;
-			}
-
-			if (stRect.f32Bottom > 1.0f)
-			{
-				stRect.f32Bottom = 1.0f;
-			}
-
-			if (stRect.f32Right > 1.0f)
-			{
-				stRect.f32Right = 1.0f;
-			}
-
-			if (stRect.f32Left > stRect.f32Right)
-			{
-				break;
-			}
-
-			if (stRect.f32Top > stRect.f32Bottom)
-			{
-				break;
-			}
-
-			CRect csRect;
-			csRect.left = (LONG)(m_u32CompsiteBmpWidth * stRect.f32Left + 0.5f);
-			csRect.right = (LONG)(m_u32CompsiteBmpWidth * stRect.f32Right + 0.5f);
-
-			//csRect.top = (LONG)(m_u32CompsiteBmpHeight * (1.0 - stRect.f32Bottom) + 0.5f);
-			//csRect.bottom = (LONG)(m_u32CompsiteBmpHeight * (1.0 - stRect.f32Top) + 0.5f);
-			csRect.top = (LONG)(m_u32CompsiteBmpHeight * (stRect.f32Top) + 0.5f);
-			csRect.bottom = (LONG)(m_u32CompsiteBmpHeight * (stRect.f32Bottom) + 0.5f);
-
-			StRGB32Bit stRGB = { 0 };
-			stRGB.s32Width = csRect.Width();
-			stRGB.s32Height = csRect.Height();
-			stRGB.pRGB = (uint32_t *)malloc(stRGB.s32Width * stRGB.s32Height * 4);
-			if (stRGB.pRGB == NULL)
-			{
-				break;
-			}
-			StRGB32Bit stRGBSrc =
-			{
-				(int32_t)m_u32CompsiteBmpWidthMaxCount,
-				(int32_t)m_u32CompsiteBmpHeightMaxCount,
-				m_pBmpBuf32BitMaxCount,
-			};
-			RGBCopy(&stRGB, 0, 0, &stRGBSrc,
-				csRect.left, csRect.top, csRect.Width(), csRect.Height());
-
-			if (m_pDlgTemp != NULL)
-			{
-				((CDlgTemp *)m_pDlgTemp)->ReloadBMP(&stRGB);
-			}
-
-#if 0
-			{
-				FILE *pFile = NULL;
-				INT ret = _wfopen_s(&pFile, L"f:\\DCLK.bmp", L"wb+");
-				if (ret == 0)
-				{
-					BufToBmp(pFile, (uint8_t *)stRGB.pRGB, 
-						stRGB.s32Height, stRGB.s32Width, 4, true);
-					fclose(pFile);
-				}
-			}
-#endif
-
-#if 0
-			{
-				for (UINT i = 0; i < stRGB.s32Height; i++)
-				{
-					g_u32Row[i] = *(stRGB.pRGB + i *  stRGB.s32Width);
-				}
-				g_u32Row[0] = g_u32Row[0];
-			}
-
-			{
-				for (UINT i = 0; i < stRGBSrc.s32Height; i++)
-				{
-					g_u32Row[i] = *(stRGBSrc.pRGB + i *  stRGBSrc.s32Width);
-				}
-				g_u32Row[0] = g_u32Row[0];
-			}
-#endif
-
-			free(stRGB.pRGB);
-
-		}
-	} while (0);
+		OnBnClickedBtnPreview();
+	}
 
 	CDialogEx::OnLButtonDblClk(nFlags, point);
 }
@@ -1282,3 +1204,104 @@ void CDlgComposite::OnMouseMove(UINT nFlags, CPoint point)
 }
 
 
+
+
+void CDlgComposite::OnBnClickedBtnPreview()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	StFRelativeRect stRect = m_stFRelativeRect;
+	if (stRect.f32Left < 0.0f)
+	{
+		stRect.f32Left = 0.0f;
+	}
+
+	if (stRect.f32Top < 0.0f)
+	{
+		stRect.f32Top = 0.0f;
+	}
+
+	if (stRect.f32Bottom > 1.0f)
+	{
+		stRect.f32Bottom = 1.0f;
+	}
+
+	if (stRect.f32Right > 1.0f)
+	{
+		stRect.f32Right = 1.0f;
+	}
+
+	if (stRect.f32Left > stRect.f32Right)
+	{
+		return;
+	}
+
+	if (stRect.f32Top > stRect.f32Bottom)
+	{
+		return;
+	}
+
+	CRect csRect;
+	csRect.left = (LONG)(m_u32CompsiteBmpWidth * stRect.f32Left + 0.5f);
+	csRect.right = (LONG)(m_u32CompsiteBmpWidth * stRect.f32Right + 0.5f);
+
+	//csRect.top = (LONG)(m_u32CompsiteBmpHeight * (1.0 - stRect.f32Bottom) + 0.5f);
+	//csRect.bottom = (LONG)(m_u32CompsiteBmpHeight * (1.0 - stRect.f32Top) + 0.5f);
+	csRect.top = (LONG)(m_u32CompsiteBmpHeight * (stRect.f32Top) + 0.5f);
+	csRect.bottom = (LONG)(m_u32CompsiteBmpHeight * (stRect.f32Bottom) + 0.5f);
+
+	StRGB32Bit stRGB = { 0 };
+	stRGB.s32Width = csRect.Width();
+	stRGB.s32Height = csRect.Height();
+	stRGB.pRGB = (uint32_t *)malloc(stRGB.s32Width * stRGB.s32Height * 4);
+	if (stRGB.pRGB == NULL)
+	{
+		return;
+	}
+	StRGB32Bit stRGBSrc =
+	{
+		(int32_t)m_u32CompsiteBmpWidthMaxCount,
+		(int32_t)m_u32CompsiteBmpHeightMaxCount,
+		m_pBmpBuf32BitMaxCount,
+	};
+	RGBCopy(&stRGB, 0, 0, &stRGBSrc,
+		csRect.left, csRect.top, csRect.Width(), csRect.Height());
+
+	if (m_pDlgTemp != NULL)
+	{
+		((CDlgTemp *)m_pDlgTemp)->ReloadBMP(&stRGB);
+	}
+
+#if 0
+	{
+		FILE *pFile = NULL;
+		INT ret = _wfopen_s(&pFile, L"f:\\DCLK.bmp", L"wb+");
+		if (ret == 0)
+		{
+			BufToBmp(pFile, (uint8_t *)stRGB.pRGB,
+				stRGB.s32Height, stRGB.s32Width, 4, true);
+			fclose(pFile);
+		}
+	}
+#endif
+
+#if 0
+	{
+		for (UINT i = 0; i < stRGB.s32Height; i++)
+		{
+			g_u32Row[i] = *(stRGB.pRGB + i *  stRGB.s32Width);
+		}
+		g_u32Row[0] = g_u32Row[0];
+	}
+
+	{
+		for (UINT i = 0; i < stRGBSrc.s32Height; i++)
+		{
+			g_u32Row[i] = *(stRGBSrc.pRGB + i *  stRGBSrc.s32Width);
+		}
+		g_u32Row[0] = g_u32Row[0];
+	}
+#endif
+
+	free(stRGB.pRGB);
+
+}
