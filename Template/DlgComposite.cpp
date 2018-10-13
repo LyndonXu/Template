@@ -270,12 +270,12 @@ void CDlgComposite::ReBuildCtrls(void)
 {
 	{
 		CWnd *pPICShow = GetDlgItem(IDC_STATIC_PICShow);
-		if (pPICShow != NULL && pPICShow->GetSafeHwnd() != NULL && 0)
+		if (pPICShow != NULL && pPICShow->GetSafeHwnd() != NULL)
 		{
 			CRect csClient;
 			GetWindowRect(&csClient);
-			csClient.left += 8;
-			csClient.top += 100;
+			csClient.left += 8 + 80;
+			csClient.top += 31 + 80;
 			csClient.right -= 8;
 			csClient.bottom -= 45;
 
@@ -853,6 +853,14 @@ INT32 CDlgComposite::ReDrawStaticPic(void)
 
 		m_csDrawRectInPIC = csDest;
 
+		/* windows */
+		m_csDrawRectInPIC.MoveToXY(csRect.left + m_csDrawRectInPIC.left,
+			csRect.top + m_csDrawRectInPIC.top);
+
+		/* client */
+		ScreenToClient(&m_csDrawRectInPIC);
+
+
 		TransparentBlt(csMemDC.GetSafeHdc(),
 			csDest.left, csDest.top, csDest.Width(), csDest.Height(),
 			m_pCompsiteDC->GetSafeHdc(),
@@ -869,23 +877,17 @@ INT32 CDlgComposite::ReDrawStaticPic(void)
 		{
 			if (m_emMouseStatus == _Mouse_UP)
 			{
-				CRect csRegionRect;	/* base PIC */
-				csRegionRect.left = (LONG)(m_stFRealRelativeRect.f32Left * m_csDrawRectInPIC.Width()) +
+				m_csRegionRectInPIC.left = (LONG)(m_stFRealRelativeRect.f32Left * m_csDrawRectInPIC.Width()) +
 					m_csDrawRectInPIC.left;
-				csRegionRect.right = (LONG)(m_stFRealRelativeRect.f32Right * m_csDrawRectInPIC.Width()) +
+				m_csRegionRectInPIC.right = (LONG)(m_stFRealRelativeRect.f32Right * m_csDrawRectInPIC.Width()) +
 					m_csDrawRectInPIC.left;
 
-				csRegionRect.top = (LONG)(m_stFRealRelativeRect.f32Top * m_csDrawRectInPIC.Height()) +
+				m_csRegionRectInPIC.top = (LONG)(m_stFRealRelativeRect.f32Top * m_csDrawRectInPIC.Height()) +
 					m_csDrawRectInPIC.top;
 
-				csRegionRect.bottom = (LONG)(m_stFRealRelativeRect.f32Bottom * m_csDrawRectInPIC.Height()) +
+				m_csRegionRectInPIC.bottom = (LONG)(m_stFRealRelativeRect.f32Bottom * m_csDrawRectInPIC.Height()) +
 					m_csDrawRectInPIC.top;
 
-				csRegionRect.MoveToXY(csRect.left + csRegionRect.left,
-					csRect.top + csRegionRect.top);/* base on window */
-
-				ScreenToClient(csRegionRect);	/* base on client */
-				m_csRegionRectInPIC = csRegionRect;
 			}
 
 			CRect csRectTmp;
@@ -1065,17 +1067,12 @@ void CDlgComposite::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
 
-	CRect csPicRect, csRectWindows;
-	m_csStaticPIC.GetWindowRect(csPicRect);
+	CRect csRectWindows;
 	
 	csRectWindows = m_csDrawRectInPIC;
-	csRectWindows.MoveToXY(csPicRect.left + m_csDrawRectInPIC.left, 
-		csPicRect.top + m_csDrawRectInPIC.top);
-	
-	CPoint csPointWindows = point;
-	ClientToScreen(&csPointWindows);
+	ClientToScreen(&csRectWindows);
 
-	if (PtInRect(&csRectWindows, csPointWindows))
+	if (PtInRect(&m_csDrawRectInPIC, point))
 	{
 		m_csPrevDownPoint = point;
 
@@ -1101,26 +1098,14 @@ void CDlgComposite::OnLButtonUp(UINT nFlags, CPoint point)
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
 	if (m_emMouseStatus != _Mouse_UP)
 	{
-		CRect csRegionRectWindows, csRectPICWindows;
-		csRegionRectWindows = m_csRegionRectInPIC;
-	
-		ClientToScreen(&csRegionRectWindows);
-		m_csStaticPIC.GetWindowRect(csRectPICWindows);
-
-		CRect csRectTmp;
-		csRectTmp.left = csRegionRectWindows.left - csRectPICWindows.left;
-		csRectTmp.right = csRegionRectWindows.right - csRectPICWindows.left;
-		csRectTmp.top = csRegionRectWindows.top - csRectPICWindows.top;
-		csRectTmp.bottom = csRegionRectWindows.bottom - csRectPICWindows.top;
-
-		m_stFRealRelativeRect.f32Left = (float)(csRectTmp.left - m_csDrawRectInPIC.left) /
+		m_stFRealRelativeRect.f32Left = (float)(m_csRegionRectInPIC.left - m_csDrawRectInPIC.left) /
 			m_csDrawRectInPIC.Width();
-		m_stFRealRelativeRect.f32Right = (float)(csRectTmp.right - m_csDrawRectInPIC.left) /
+		m_stFRealRelativeRect.f32Right = (float)(m_csRegionRectInPIC.right - m_csDrawRectInPIC.left) /
 			m_csDrawRectInPIC.Width();
 
-		m_stFRealRelativeRect.f32Top = (float)(csRectTmp.top - m_csDrawRectInPIC.top) /
+		m_stFRealRelativeRect.f32Top = (float)(m_csRegionRectInPIC.top - m_csDrawRectInPIC.top) /
 			m_csDrawRectInPIC.Height();
-		m_stFRealRelativeRect.f32Bottom = (float)(csRectTmp.bottom - m_csDrawRectInPIC.top) /
+		m_stFRealRelativeRect.f32Bottom = (float)(m_csRegionRectInPIC.bottom - m_csDrawRectInPIC.top) /
 			m_csDrawRectInPIC.Height();
 
 		

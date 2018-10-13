@@ -134,7 +134,7 @@ public:
 	CBitmap *m_pCompsiteBMPForDC;
 	CBitmap *m_pOldBMP;
 
-	CRect m_csDrawRectInPIC;	/* relative, base on pic, bmp position */
+	CRect m_csDrawRectInPIC;	/* client, bmp position */
 
 	CRect m_csRegionRectInPIC;	/* client */
 	CPoint m_csPrevDownPoint;	/* client */

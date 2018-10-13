@@ -222,8 +222,8 @@ void CDlgTemp::ReBuildCtrls(void)
 		{
 			CRect csClient;
 			GetWindowRect(&csClient);
-			csClient.left += 8;
-			csClient.top += 31;
+			csClient.left += 8 + 80;
+			csClient.top += 31 + 80;
 			csClient.right -= 8;
 			csClient.bottom -= 45;
 
@@ -577,6 +577,12 @@ INT32 CDlgTemp::ReDrawStaticPic(void)
 		}
 
 		m_csDrawRectInPIC = csDest;
+		/* windows */
+		m_csDrawRectInPIC.MoveToXY(csRect.left + m_csDrawRectInPIC.left,
+			csRect.top + m_csDrawRectInPIC.top);
+		/* client */
+		ScreenToClient(&m_csDrawRectInPIC);
+
 
 		TransparentBlt(csMemDC.GetSafeHdc(),
 			csDest.left, csDest.top, csDest.Width(), csDest.Height(),
@@ -614,6 +620,8 @@ INT32 CDlgTemp::ReDrawStaticPic(void)
 				{
 					pPoint[i].x = iter->m_stPoint.x;
 					pPoint[i].y = iter->m_stPoint.y;
+					ClientToScreen(pPoint + i);
+					m_csStaticPIC.ScreenToClient(pPoint + i);
 				}
 
 				CPen csPen(PS_SOLID, 1, dwColor);
@@ -657,12 +665,10 @@ void CDlgTemp::OnLButtonDown(UINT nFlags, CPoint point)
 
 	//m_csPolygonCtrl.InsertPoint(point.x, point.y);
 
-	CRect csPicRect, csRectWindows;
-	m_csStaticPIC.GetWindowRect(csPicRect);
+	CRect csRectWindows;
 
 	csRectWindows = m_csDrawRectInPIC;
-	csRectWindows.MoveToXY(csPicRect.left + m_csDrawRectInPIC.left,
-		csPicRect.top + m_csDrawRectInPIC.top);
+	ClientToScreen(&csRectWindows);
 
 	if (PtInRect(&m_csDrawRectInPIC, point))
 	{
