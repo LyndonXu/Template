@@ -134,12 +134,12 @@ public:
 	CBitmap *m_pCompsiteBMPForDC;
 	CBitmap *m_pOldBMP;
 
-	CRect m_csDrawRectInPIC;
+	CRect m_csDrawRectInPIC;	/* relative, base on pic, bmp position */
 
-	CRect m_csRegionRectInPIC;
-	CPoint m_csPrevDownPoint;
+	CRect m_csRegionRectInPIC;	/* client */
+	CPoint m_csPrevDownPoint;	/* client */
 
-	StFRelativeRect m_stFRelativeRect;
+	StFRelativeRect m_stFRealRelativeRect;	/* base on bmp */
 
 public:
 	CDialogEx *m_pDlgTemp;
